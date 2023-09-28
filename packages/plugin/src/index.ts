@@ -30,6 +30,7 @@ const factory: server.PluginModuleFactory = () => {
       };
       app.post('/inlay-hints', (req, res) => {
         try {
+          info.project.projectService.logger.info(`[TS-Faker][inlay-hints] ${req.body.fileName}]`);
           const response = getInlayHintsWorker(req.body);
           res.json(response);
         } catch {
@@ -40,7 +41,7 @@ const factory: server.PluginModuleFactory = () => {
       start = (port: number) => {
         server?.close();
         server = app.listen(port, () => {
-          console.log(`TS-Faker Server listening on port ${port}`);
+          info.project.projectService.logger.info(`[TS-Faker] Listening on port ${port}`);
         });
       };
 
