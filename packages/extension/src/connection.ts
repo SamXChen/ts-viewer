@@ -1,4 +1,4 @@
-import type { PluginConfig } from '@ts-faker/shared';
+import type { PluginConfig } from '@ts-viewer/shared';
 import getPort from 'get-port';
 import { pluginId, typeScriptExtensionId } from './constants';
 import * as vscode from 'vscode';

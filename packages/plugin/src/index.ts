@@ -1,67 +1,26 @@
 import { LanguageServiceMode, server } from 'typescript/lib/tsserverlibrary';
-import 'open-typescript';
 
-import { GetInlayHintsRequest, GetInlayHintsResponse, PluginConfig } from '@ts-faker/shared';
+import { PluginConfig } from '@ts-viewer/shared';
 
-import express from 'express';
-import * as http from 'http';
+import { startListen, restartListen, setCreatedInfo } from './service';
 
 const factory: server.PluginModuleFactory = () => {
-  let server: http.Server | undefined;
-  let start: ((port: number) => void) | undefined;
-
   return {
     create(info) {
       if (info.project.projectService.serverMode !== LanguageServiceMode.Semantic) {
         return info.languageService;
       }
 
-      const config = info.config as Partial<PluginConfig> | undefined;
+      setCreatedInfo(info);
 
-      const app = express();
-      app.use(express.json());
-
-      const originGetInlayHints = info.languageService.provideInlayHints.bind(info.languageService);
-
-      const getInlayHintsWorker = (req: GetInlayHintsRequest): GetInlayHintsResponse => {
-        return {
-          hints: originGetInlayHints(req.fileName, req.span, req.preference),
-        };
-      };
-      app.post('/inlay-hints', (req, res) => {
-        try {
-          const response = getInlayHintsWorker(req.body);
-          res.json(response);
-        } catch {
-          res.status(500).send('Internal Server Error');
-        }
-      });
-
-      start = (port: number) => {
-        server?.close();
-        server = app.listen(port, () => {
-          console.log(`TS-Faker Server listening on port ${port}`);
-        });
-      };
-
-      if (config?.port) {
-        start(config.port);
-      }
+      startListen(info.config.port!);
 
       return {
         ...info.languageService,
-        provideInlayHints(...args) {
-          if (server) {
-            return [];
-          }
-          return originGetInlayHints(...args);
-        },
       };
     },
     onConfigurationChanged(config: Partial<PluginConfig>) {
-      if (start && config.port) {
-        start(config.port);
-      }
+      restartListen(config.port!);
     },
   };
 };

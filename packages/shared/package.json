@@ -1,8 +1,12 @@
 {
- "name": "@ts-faker/shared",
+  "name": "@ts-viewer/shared",
   "version": "0.0.1",
+  "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build:dts": "tsc",
     "build:bundle": "esno ./scripts/build.ts",
@@ -11,7 +15,6 @@
   "devDependencies": {
     "esbuild": "0.19.4",
     "esno": "0.17.0",
-    "typescript": "5.2.2",
-    "open-typescript": "4.5.0-dev.20210906"
+    "typescript": "5.2.2"
   }
 }
