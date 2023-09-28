@@ -1,0 +1,46 @@
+{
+  "name": "@ts-faker/vscode-extension",
+  "displayName": "TS Faker Plugin",
+  "description": "Generate fake data for TypeScript",
+  "version": "0.0.1",
+  "author": "samxchen",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "engines": {
+    "vscode": "^1.66.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "extensionDependencies": [
+    "vscode.typescript-language-features"
+  ],
+  "activationEvents": [
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact",
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact"
+  ],
+  "scripts": {
+    "build:dts": "tsc",
+    "build:bundle": "esno ./scripts/build.ts",
+    "build": "pnpm build:bundle && pnpm build:dts",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@ts-faker/plugin": "workspace:*",
+    "@ts-faker/shared": "workspace:*",
+    "axios": "1.5.1",
+    "get-port": "7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.7.1",
+    "@types/vscode": "1.82.0",
+    "esbuild": "0.19.4",
+    "esno": "0.17.0",
+    "typescript": "5.2.2",
+    "vsce": "2.15.0"
+  }
+}

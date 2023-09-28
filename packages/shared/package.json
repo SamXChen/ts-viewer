@@ -1,0 +1,17 @@
+{
+ "name": "@ts-faker/shared",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build:dts": "tsc",
+    "build:bundle": "esno ./scripts/build.ts",
+    "build": "pnpm build:dts && pnpm build:bundle"
+  },
+  "devDependencies": {
+    "esbuild": "0.19.4",
+    "esno": "0.17.0",
+    "typescript": "5.2.2",
+    "open-typescript": "4.5.0-dev.20210906"
+  }
+}
