@@ -1,14 +1,22 @@
 {
-  "name": "@ts-faker/vscode-extension",
-  "displayName": "TS Faker Plugin",
-  "description": "Generate fake data for TypeScript",
-  "version": "0.0.1",
+  "name": "ts-viewer-extension",
+  "displayName": "TS Viewer",
+  "description": "Help View Full TypeScript Interface Information",
+  "version": "0.0.9",
   "author": "samxchen",
+  "publisher": "samxchen",
+  "icon": "images/icon.png",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "url": "https://github.com/SamXChen/ts-viewer.git"
+  },
   "engines": {
-    "vscode": "^1.66.0"
+    "vscode": "^1.82.0"
   },
   "categories": [
     "Programming Languages",
@@ -18,11 +26,21 @@
     "vscode.typescript-language-features"
   ],
   "activationEvents": [
+    "workspaceContains:tsconfig.json",
     "onLanguage:typescript",
     "onLanguage:typescriptreact",
     "onLanguage:javascript",
-    "onLanguage:javascriptreact"
+    "onLanguage:javascriptreact",
+    "onLanguage:vue"
   ],
+  "contributes": {
+    "typescriptServerPlugins": [
+      {
+        "name": "ts-viewer-language-plugin",
+        "enableForWorkspaceTypeScriptVersions": true
+      }
+    ]
+  },
   "scripts": {
     "build:dts": "tsc",
     "build:bundle": "esno ./scripts/build.ts",
@@ -30,12 +48,13 @@
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {
-    "@ts-faker/plugin": "workspace:*",
-    "@ts-faker/shared": "workspace:*",
     "axios": "1.5.1",
-    "get-port": "7.0.0"
+    "get-port": "7.0.0",
+    "prettier": "2.7.1",
+    "ts-viewer-language-plugin": "^0.0.9"
   },
   "devDependencies": {
+    "@ts-viewer/shared": "*",
     "@types/node": "20.7.1",
     "@types/vscode": "1.82.0",
     "esbuild": "0.19.4",
