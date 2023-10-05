@@ -40,7 +40,15 @@ function createApp(options: { info: tsServer.PluginCreateInfo }) {
 
       const node = ts.getTokenAtPosition(sourceFile as ts.SourceFile, req.body.position);
 
-      const type = typeChecker?.getTypeAtLocation(node as Node);
+      let type = typeChecker?.getTypeAtLocation(node as Node);
+      // @why 实测 language service 返回的 type 有可能不准，会变成 any
+      // @how 尝试 5 次，如果 5 次都是 any，就放过
+      let tryCount = 0;
+      while (((type?.flags ?? 0) & ts.TypeFlags.Any) === 0 && tryCount < 5) {
+        type = typeChecker?.getTypeAtLocation(node as Node);
+        tryCount++;
+      }
+
       const typeInfoString = typeChecker?.typeToString(
         type!,
         undefined,
