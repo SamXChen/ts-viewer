@@ -1,68 +1,37 @@
 import { LanguageServiceMode, server } from 'typescript/lib/tsserverlibrary';
 import 'open-typescript';
 
-import { GetInlayHintsRequest, GetInlayHintsResponse, PluginConfig } from '@ts-faker/shared';
+import { PluginConfig } from '@ts-faker/shared';
 
-import express from 'express';
-import * as http from 'http';
+import { startListen } from './service';
 
 const factory: server.PluginModuleFactory = () => {
-  let server: http.Server | undefined;
-  let start: ((port: number) => void) | undefined;
+  let currentInfo: server.PluginCreateInfo | undefined;
 
   return {
     create(info) {
       if (info.project.projectService.serverMode !== LanguageServiceMode.Semantic) {
         return info.languageService;
       }
+      currentInfo = info;
 
-      const config = info.config as Partial<PluginConfig> | undefined;
-
-      const app = express();
-      app.use(express.json());
-
-      const originGetInlayHints = info.languageService.provideInlayHints.bind(info.languageService);
-
-      const getInlayHintsWorker = (req: GetInlayHintsRequest): GetInlayHintsResponse => {
-        return {
-          hints: originGetInlayHints(req.fileName, req.span, req.preference),
-        };
-      };
-      app.post('/inlay-hints', (req, res) => {
-        try {
-          info.project.projectService.logger.info(`[TS-Faker][inlay-hints] ${req.body.fileName}]`);
-          const response = getInlayHintsWorker(req.body);
-          res.json(response);
-        } catch {
-          res.status(500).send('Internal Server Error');
-        }
+      startListen({
+        port: (info.config as PluginConfig).port,
+        info: info,
       });
-
-      start = (port: number) => {
-        server?.close();
-        server = app.listen(port, () => {
-          info.project.projectService.logger.info(`[TS-Faker] Listening on port ${port}`);
-        });
-      };
-
-      if (config?.port) {
-        start(config.port);
-      }
 
       return {
         ...info.languageService,
-        provideInlayHints(...args) {
-          if (server) {
-            return [];
-          }
-          return originGetInlayHints(...args);
-        },
       };
     },
     onConfigurationChanged(config: Partial<PluginConfig>) {
-      if (start && config.port) {
-        start(config.port);
+      if (!currentInfo) {
+        return;
       }
+      startListen({
+        port: config.port!,
+        info: currentInfo,
+      });
     },
   };
 };

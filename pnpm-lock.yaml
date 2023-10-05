@@ -60,11 +60,17 @@ importers:
         specifier: workspace:*
         version: link:../shared
       axios:
-        specifier: ^1.5.1
+        specifier: 1.5.1
         version: 1.5.1
       get-port:
-        specifier: ^7.0.0
+        specifier: 7.0.0
         version: 7.0.0
+      highlight.js:
+        specifier: ^11.8.0
+        version: 11.8.0
+      prettier:
+        specifier: 2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: 20.7.1
@@ -1804,6 +1810,11 @@ packages:
     dependencies:
       function-bind: 1.1.1
 
+  /highlight.js@11.8.0:
+    resolution: {integrity: sha512-MedQhoqVdr0U6SSnWPzfiadUcDHfN/Wzq25AkXiQv9oiOO/sG0S7XkvpFIqWBl9Yq1UYyYOOVORs5UW2XlPyzg==}
+    engines: {node: '>=12.0.0'}
+    dev: false
+
   /hosted-git-info@4.1.0:
     resolution: {integrity: sha512-kyCuEOWjJqZuDbRHzL8V93NzQhwIB71oFWSyzVo+KPZI+pnQPPxucdkrOZvkLRnrf5URsQM+IJ09Dw29cRALIA==}
     engines: {node: '>=10'}
@@ -2253,7 +2264,6 @@ packages:
     resolution: {integrity: sha512-ujppO+MkdPqoVINuDFDRLClm7D78qbDt0/NR+wp5FqEZOoTNAjPHWj17QRhu7geIHJfcNhRk1XVQmF8Bp3ye+g==}
     engines: {node: '>=10.13.0'}
     hasBin: true
-    dev: true
 
   /proxy-addr@2.0.7:
     resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}

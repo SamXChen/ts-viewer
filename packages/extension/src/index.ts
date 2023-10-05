@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import { getPluginConfig } from './connection';
 import { selectors } from './constants';
-import { InlayHintProvider } from './code';
+
+import { HoverProvider } from './code';
+
+import { getViewService } from './webview';
 
 const DefaultPort = 3200;
 
@@ -12,6 +15,9 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
-    vscode.languages.registerInlayHintsProvider(selectors, new InlayHintProvider(port)),
+    vscode.languages.registerHoverProvider(selectors, new HoverProvider(context, port)),
   );
+
+  const [ViewCommandName, ViewCommandImpl] = getViewService().command;
+  context.subscriptions.push(vscode.commands.registerCommand(ViewCommandName, ViewCommandImpl));
 }

@@ -41,7 +41,9 @@
     "@ts-faker/plugin": "workspace:*",
     "@ts-faker/shared": "workspace:*",
     "axios": "1.5.1",
-    "get-port": "7.0.0"
+    "get-port": "7.0.0",
+    "highlight.js": "11.8.0",
+    "prettier": "2.7.1"
   },
   "devDependencies": {
     "@types/node": "20.7.1",
