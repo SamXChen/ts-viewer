@@ -39,6 +39,8 @@ function createApp(options: { info: tsServer.PluginCreateInfo }) {
         const typeChecker = program?.getTypeChecker();
         const sourceFile = program?.getSourceFile(req.body.fileName);
 
+        logger.info(`[TS-Faker][File-Name] ${req.body.fileName}, ${req.body.position}`);
+
         const node = ts.getTokenAtPosition(sourceFile as ts.SourceFile, req.body.position);
 
         let type = typeChecker?.getTypeAtLocation(node as Node);
@@ -46,7 +48,7 @@ function createApp(options: { info: tsServer.PluginCreateInfo }) {
         // @how 尝试 5 次，如果都是 any，就放过
         let tryCount = 1;
         while (((type?.flags ?? 0) & ts.TypeFlags.Any) === 0 && tryCount < 5) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 50 * tryCount));
           type = typeChecker?.getTypeAtLocation(node as Node);
           tryCount++;
         }
@@ -65,7 +67,7 @@ function createApp(options: { info: tsServer.PluginCreateInfo }) {
           }),
         );
       } catch (err) {
-        logger.info(`[TS-Faker] Error: ${err as any}`);
+        logger.info(`[TS-Faker] Error: ${err as any}, ${(err as any).stack}}`);
         res.status(500).send('Internal Server Error');
       }
     }
