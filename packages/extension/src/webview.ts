@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 const ViewCommandName = 'ts-faker.view';
+const DocumentProviderName = ViewCommandName + '.document-provider';
 
 const MaxViewRequestMapSize = 6;
 const ViewRequestMap = new Map<
@@ -31,40 +32,28 @@ function setViewRequestMap(requestParams: any) {
   return key;
 }
 
-function viewImpl(index: string) {
+async function viewImpl(index: string) {
   const indexInfo = ViewRequestMap.get(index);
   if (!indexInfo) {
     return;
   }
-  const data = indexInfo.data ?? {};
-  const panel = vscode.window.createWebviewPanel(
-    index,
-    data.title ?? 'ts-faker.view',
-    vscode.ViewColumn.Two,
-    { enableScripts: true },
-  );
 
-  panel.webview.html = `
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${data.title ?? 'ts-faker'}</title>
-        ${
-          (data.extensionLinkList as vscode.Uri[] | undefined)
-            ?.map(
-              (link) =>
-                `<link rel="stylesheet" href="${panel.webview.asWebviewUri(link).toString()}">`,
-            )
-            .join('\n') ?? ''
-        }
-        <style>
-          ${data.inlineStyleList?.join('\n') ?? ''}
-        </style>
-      </head>
-      <body>${data.body ?? 'ts-faker'}</body>
-    </html>
-  `;
+  const title = indexInfo.data?.title ?? 'ts-faker';
+  const uri = vscode.Uri.file(title).with({
+    scheme: DocumentProviderName,
+    path: title,
+    query: `index=${index}`,
+  });
+
+  const doc = await vscode.workspace.openTextDocument(uri);
+  const editor = await vscode.window.showTextDocument(doc, {
+    preview: false,
+    viewColumn: vscode.ViewColumn.Beside,
+  });
+  await vscode.languages.setTextDocumentLanguage(
+    editor.document,
+    indexInfo.data?.language ?? 'typescript',
+  );
 }
 
 function genViewLink(linkName: string, requestParams: any) {
@@ -77,9 +66,24 @@ function genViewLink(linkName: string, requestParams: any) {
   return link;
 }
 
+function documentProviderImpl(uri: vscode.Uri) {
+  const queryStr = uri.query;
+  const query = new URLSearchParams(queryStr);
+  const index = query.get('index');
+  if (!index) {
+    return '';
+  }
+  const indexInfo = ViewRequestMap.get(index);
+  if (!indexInfo) {
+    return '';
+  }
+  return String(indexInfo.data.text);
+}
+
 export function getViewService() {
   return {
     command: [ViewCommandName, viewImpl],
+    documentProvider: [DocumentProviderName, documentProviderImpl],
     genViewLink,
   } as const;
 }

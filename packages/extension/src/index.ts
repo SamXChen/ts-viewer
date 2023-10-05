@@ -20,4 +20,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const [ViewCommandName, ViewCommandImpl] = getViewService().command;
   context.subscriptions.push(vscode.commands.registerCommand(ViewCommandName, ViewCommandImpl));
+
+  const [DocumentProviderName, DocumentProviderImpl] = getViewService().documentProvider;
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(DocumentProviderName, {
+      provideTextDocumentContent: DocumentProviderImpl,
+    }),
+  );
 }

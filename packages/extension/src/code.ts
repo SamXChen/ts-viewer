@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 import prettier from 'prettier';
-import hljs from 'highlight.js';
 
 import { getType } from './api';
 import { getViewService } from './webview';
@@ -29,8 +28,6 @@ export class HoverProvider implements vscode.HoverProvider {
       return;
     }
 
-    const context = this.context;
-
     const currentWord = document.getText(range);
     const currentWordWithUpperFirst = currentWord.replace(/^\w/, (c) => c.toUpperCase());
 
@@ -40,32 +37,10 @@ export class HoverProvider implements vscode.HoverProvider {
       parser: 'typescript',
     });
 
-    const highlightedTypeString = hljs.highlight('typescript', prettierTypeString).value;
-
-    const vscodeEditorFontSize = vscode.workspace
-      .getConfiguration('editor')
-      .get('fontSize') as number;
-
-    const highlightStyleLink = vscode.Uri.joinPath(
-      context.extensionUri,
-      'node_modules',
-      'highlight.js',
-      'styles',
-      'vs2015.css',
-    );
-
     const link = getViewService().genViewLink('View Full Type', {
       title: `ts-faker.full-type.${currentWordWithUpperFirst}.d.ts`,
-      extensionLinkList: [highlightStyleLink],
-      inlineStyleList: [
-        `
-          body {
-            font-family: auto;
-            font-size: ${vscodeEditorFontSize}px;
-          }
-        `,
-      ],
-      body: `<pre>${highlightedTypeString}</pre>`,
+      text: prettierTypeString,
+      language: 'typescript',
     });
 
     return new vscode.Hover([link], range);
