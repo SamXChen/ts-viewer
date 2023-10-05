@@ -32,40 +32,44 @@ function createApp(options: { info: tsServer.PluginCreateInfo }) {
   app.use(express.json());
 
   app.post('/get-type', (req, res) => {
-    try {
-      const program = info.languageService.getProgram();
+    async function handle() {
+      try {
+        const program = info.languageService.getProgram();
 
-      const typeChecker = program?.getTypeChecker();
-      const sourceFile = program?.getSourceFile(req.body.fileName);
+        const typeChecker = program?.getTypeChecker();
+        const sourceFile = program?.getSourceFile(req.body.fileName);
 
-      const node = ts.getTokenAtPosition(sourceFile as ts.SourceFile, req.body.position);
+        const node = ts.getTokenAtPosition(sourceFile as ts.SourceFile, req.body.position);
 
-      let type = typeChecker?.getTypeAtLocation(node as Node);
-      // @why 实测 language service 返回的 type 有可能不准，会变成 any
-      // @how 尝试 5 次，如果 5 次都是 any，就放过
-      let tryCount = 0;
-      while (((type?.flags ?? 0) & ts.TypeFlags.Any) === 0 && tryCount < 5) {
-        type = typeChecker?.getTypeAtLocation(node as Node);
-        tryCount++;
+        let type = typeChecker?.getTypeAtLocation(node as Node);
+        // @why 实测 language service 返回的 type 有可能不准，会变成 any
+        // @how 尝试 5 次，如果都是 any，就放过
+        let tryCount = 1;
+        while (((type?.flags ?? 0) & ts.TypeFlags.Any) === 0 && tryCount < 5) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          type = typeChecker?.getTypeAtLocation(node as Node);
+          tryCount++;
+        }
+
+        const typeInfoString = typeChecker?.typeToString(
+          type!,
+          undefined,
+          ts.TypeFormatFlags.NoTruncation,
+        );
+        logger.info(`[TS-Faker][Type-Info-String] ${typeInfoString}`);
+
+        res.status(200).send(
+          JSON.stringify({
+            type: 'success',
+            data: typeInfoString,
+          }),
+        );
+      } catch (err) {
+        logger.info(`[TS-Faker] Error: ${err as any}`);
+        res.status(500).send('Internal Server Error');
       }
-
-      const typeInfoString = typeChecker?.typeToString(
-        type!,
-        undefined,
-        ts.TypeFormatFlags.NoTruncation,
-      );
-      logger.info(`[TS-Faker][Type-Info-String] ${typeInfoString}`);
-
-      res.status(200).send(
-        JSON.stringify({
-          type: 'success',
-          data: typeInfoString,
-        }),
-      );
-    } catch (err) {
-      logger.info(`[TS-Faker] Error: ${err as any}`);
-      res.status(500).send('Internal Server Error');
     }
+    handle();
   });
 
   return app;
