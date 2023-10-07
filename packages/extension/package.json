@@ -1,6 +1,6 @@
 {
   "name": "ts-viewer-extension",
-  "displayName": "TS Viewer Plugin",
+  "displayName": "TS Viewer",
   "description": "Help View Full TypeScript Interface Information",
   "version": "0.0.7",
   "author": "samxchen",
