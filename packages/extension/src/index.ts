@@ -3,8 +3,8 @@ import { getPluginConfig } from './connection';
 import { selectors } from './constants';
 
 import { HoverProvider } from './code';
-
 import { getViewService } from './webview';
+import { installDependencies } from './dependency';
 
 const DefaultPort = 3200;
 
@@ -13,6 +13,8 @@ export async function activate(context: vscode.ExtensionContext) {
   if (!port) {
     return;
   }
+
+  installDependencies(context);
 
   context.subscriptions.push(
     vscode.languages.registerHoverProvider(selectors, new HoverProvider(context, port)),

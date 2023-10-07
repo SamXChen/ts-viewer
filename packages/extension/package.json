@@ -2,7 +2,7 @@
   "name": "ts-viewer-extension",
   "displayName": "TS Viewer Plugin",
   "description": "Help View Full TypeScript Interface Information",
-  "version": "0.0.3",
+  "version": "0.0.6",
   "author": "samxchen",
   "license": "MIT",
   "main": "dist/index.js",
