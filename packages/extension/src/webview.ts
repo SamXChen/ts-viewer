@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const ViewCommandName = 'ts-faker.view';
+const ViewCommandName = 'ts-viewer.view';
 const DocumentProviderName = ViewCommandName + '.document-provider';
 
 const MaxViewRequestMapSize = 6;
@@ -38,7 +38,7 @@ async function viewImpl(index: string) {
     return;
   }
 
-  const title = indexInfo.data?.title ?? 'ts-faker';
+  const title = indexInfo.data?.title ?? 'ts-viewer';
   const uri = vscode.Uri.file(title).with({
     scheme: DocumentProviderName,
     path: title,

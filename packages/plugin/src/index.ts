@@ -1,6 +1,6 @@
 import { LanguageServiceMode, server } from 'typescript/lib/tsserverlibrary';
 
-import { PluginConfig } from '@ts-faker/shared';
+import { PluginConfig } from '@ts-viewer/shared';
 
 import { startListen, restartListen, setCreatedInfo } from './service';
 

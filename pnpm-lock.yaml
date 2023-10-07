@@ -53,10 +53,10 @@ importers:
 
   packages/extension:
     dependencies:
-      '@ts-faker/plugin':
+      '@ts-viewer/plugin':
         specifier: workspace:*
         version: link:../plugin
-      '@ts-faker/shared':
+      '@ts-viewer/shared':
         specifier: workspace:*
         version: link:../shared
       axios:
@@ -90,7 +90,7 @@ importers:
 
   packages/plugin:
     dependencies:
-      '@ts-faker/shared':
+      '@ts-viewer/shared':
         specifier: workspace:*
         version: link:../shared
       express:

@@ -1,5 +1,5 @@
 {
-  "name": "@ts-faker/vscode-extension",
+  "name": "@ts-viewer/vscode-extension",
   "displayName": "TS Faker Plugin",
   "description": "Generate fake data for TypeScript",
   "version": "0.0.1",
@@ -26,7 +26,7 @@
   "contributes": {
     "typescriptServerPlugins": [
       {
-        "name": "@ts-faker/plugin",
+        "name": "@ts-viewer/plugin",
         "enableForWorkspaceTypeScriptVersions": true
       }
     ]
@@ -38,8 +38,8 @@
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {
-    "@ts-faker/plugin": "workspace:*",
-    "@ts-faker/shared": "workspace:*",
+    "@ts-viewer/plugin": "workspace:*",
+    "@ts-viewer/shared": "workspace:*",
     "axios": "1.5.1",
     "get-port": "7.0.0",
     "prettier": "2.7.1"

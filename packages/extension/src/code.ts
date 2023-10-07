@@ -38,7 +38,7 @@ export class HoverProvider implements vscode.HoverProvider {
     });
 
     const link = getViewService().genViewLink('View Full Type', {
-      title: `ts-faker.full-type.${currentWordWithUpperFirst}.d.ts`,
+      title: `ts-viewer.full-type.${currentWordWithUpperFirst}.d.ts`,
       text: prettierTypeString,
       language: 'typescript',
       commandList: ['editor.action.formatDocument'],

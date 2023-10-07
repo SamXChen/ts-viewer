@@ -10,7 +10,7 @@ const createdInfoMap = new Map<string, tsServer.PluginCreateInfo>();
 export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
   const currentDir = info.project.getCurrentDirectory();
   info.project.projectService.logger.info(
-    `[TS-Faker][Create-Info][Current-Directory] ${currentDir}`,
+    `[TS-Viewer][Create-Info][Current-Directory] ${currentDir}`,
   );
   createdInfoMap.set(currentDir, info);
 }
@@ -38,7 +38,7 @@ export function startListen(port: number) {
     return;
   }
   server = createApp().listen(port, () => {
-    console.log(`[TS-Faker] Listening on port ${port}`);
+    console.log(`[TS-Viewer] Listening on port ${port}`);
   });
   return server;
 }
@@ -61,7 +61,7 @@ function createApp() {
 
       const logger = info.project.projectService.logger;
 
-      logger.info(`[TS-Faker][File-Name] ${req.body.fileName}, ${req.body.position}`);
+      logger.info(`[TS-Viewer][File-Name] ${req.body.fileName}, ${req.body.position}`);
 
       const program = info.languageService.getProgram();
 
@@ -70,18 +70,18 @@ function createApp() {
       const sourceFile = program?.getSourceFile(req.body.fileName);
 
       const currentDirectory = program?.getCurrentDirectory();
-      logger.info(`[TS-Faker][Current-Directory] ${currentDirectory}`);
+      logger.info(`[TS-Viewer][Current-Directory] ${currentDirectory}`);
 
       if (!sourceFile) {
         throw new Error('sourceFile not found');
       }
-      logger.info(`[TS-Faker][Source-File] ${sourceFile.fileName}`);
+      logger.info(`[TS-Viewer][Source-File] ${sourceFile.fileName}`);
 
       const node = findNode(sourceFile.getChildren(), req.body.position);
       if (!node) {
         throw new Error('node not found');
       }
-      logger.info(`[TS-Faker][Node] ${node.getText()}`);
+      logger.info(`[TS-Viewer][Node] ${node.getText()}`);
 
       const type = typeChecker?.getTypeAtLocation(node);
       const typeInfoString = typeChecker?.typeToString(
@@ -89,7 +89,7 @@ function createApp() {
         undefined,
         ts.TypeFormatFlags.NoTruncation,
       );
-      logger.info(`[TS-Faker][Type-Info-String] ${typeInfoString}`);
+      logger.info(`[TS-Viewer][Type-Info-String] ${typeInfoString}`);
 
       res.status(200).send(
         JSON.stringify({
