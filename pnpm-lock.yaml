@@ -53,7 +53,7 @@ importers:
 
   packages/extension:
     dependencies:
-      '@ts-viewer/plugin':
+      'ts-viewer-plugin':
         specifier: workspace:*
         version: link:../plugin
       '@ts-viewer/shared':

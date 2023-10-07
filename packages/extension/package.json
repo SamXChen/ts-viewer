@@ -30,7 +30,7 @@
   "contributes": {
     "typescriptServerPlugins": [
       {
-        "name": "@ts-viewer/plugin",
+        "name": "ts-viewer-plugin",
         "enableForWorkspaceTypeScriptVersions": true
       }
     ]
@@ -42,7 +42,7 @@
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {
-    "@ts-viewer/plugin": "workspace:*",
+    "ts-viewer-plugin": "workspace:*",
     "@ts-viewer/shared": "workspace:*",
     "axios": "1.5.1",
     "get-port": "7.0.0",
