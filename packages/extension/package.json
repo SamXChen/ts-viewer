@@ -3,6 +3,7 @@
   "displayName": "TS Viewer Plugin",
   "description": "Help View Full TypeScript Interface Information",
   "version": "0.0.1",
+  "private": true,
   "author": "samxchen",
   "license": "MIT",
   "main": "dist/index.js",
@@ -42,7 +43,7 @@
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {
-    "ts-viewer-plugin": "workspace:*",
+    "ts-viewer-plugin": "^0.0.1",
     "axios": "1.5.1",
     "get-port": "7.0.0",
     "prettier": "2.7.1"
@@ -50,7 +51,7 @@
   "devDependencies": {
     "@types/node": "20.7.1",
     "@types/vscode": "1.82.0",
-    "@ts-viewer/shared": "workspace:*",
+    "@ts-viewer/shared": "*",
     "esbuild": "0.19.4",
     "esno": "0.17.0",
     "typescript": "5.2.2",
