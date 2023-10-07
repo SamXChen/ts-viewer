@@ -43,7 +43,6 @@
   },
   "dependencies": {
     "ts-viewer-plugin": "workspace:*",
-    "@ts-viewer/shared": "workspace:*",
     "axios": "1.5.1",
     "get-port": "7.0.0",
     "prettier": "2.7.1"
@@ -51,6 +50,7 @@
   "devDependencies": {
     "@types/node": "20.7.1",
     "@types/vscode": "1.82.0",
+    "@ts-viewer/shared": "workspace:*",
     "esbuild": "0.19.4",
     "esno": "0.17.0",
     "typescript": "5.2.2",
