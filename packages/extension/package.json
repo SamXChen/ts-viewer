@@ -43,7 +43,7 @@
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {
-    "ts-viewer-plugin": "*",
+    "ts-viewer-plugin": "^0.0.1",
     "axios": "1.5.1",
     "get-port": "7.0.0",
     "prettier": "2.7.1"
