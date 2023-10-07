@@ -33,7 +33,7 @@
   "contributes": {
     "typescriptServerPlugins": [
       {
-        "name": "ts-viewer-plugin",
+        "name": "ts-viewer-language-plugin",
         "enableForWorkspaceTypeScriptVersions": true
       }
     ]
@@ -48,7 +48,7 @@
     "axios": "1.5.1",
     "get-port": "7.0.0",
     "prettier": "2.7.1",
-    "ts-viewer-plugin": "^0.0.2"
+    "ts-viewer-language-plugin": "^0.0.2"
   },
   "devDependencies": {
     "@ts-viewer/shared": "*",

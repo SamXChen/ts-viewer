@@ -64,7 +64,7 @@ importers:
       prettier:
         specifier: 2.7.1
         version: 2.7.1
-      ts-viewer-plugin:
+      ts-viewer-language-plugin:
         specifier: ^0.0.2
         version: link:../plugin
     devDependencies:

@@ -2,4 +2,4 @@ export const selectors = ['typescript', 'typescriptreact', 'javascript', 'javasc
 
 export const typeScriptExtensionId = 'vscode.typescript-language-features';
 
-export const pluginId = 'ts-viewer-plugin';
+export const pluginId = 'ts-viewer-language-plugin';
