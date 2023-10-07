@@ -4,6 +4,8 @@
   "description": "Help View Full TypeScript Interface Information",
   "version": "0.0.7",
   "author": "samxchen",
+  "publisher": "samxchen",
+  "icon": "images/icon.png",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
