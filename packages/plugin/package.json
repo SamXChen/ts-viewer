@@ -6,6 +6,9 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "url": "https://github.com/SamXChen/ts-viewer.git"
+  },
   "scripts": {
     "build:dts": "tsc",
     "build:bundle": "esno ./scripts/build.ts",
