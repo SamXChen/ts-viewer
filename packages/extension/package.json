@@ -24,6 +24,7 @@
     "vscode.typescript-language-features"
   ],
   "activationEvents": [
+    "workspaceContains:tsconfig.json",
     "onLanguage:typescript",
     "onLanguage:typescriptreact",
     "onLanguage:javascript",
