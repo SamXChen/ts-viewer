@@ -19,7 +19,7 @@ export class HoverProvider implements vscode.HoverProvider {
       return;
     }
     if (res.type === 'error') {
-      console.log('error', res.data);
+      console.error('error', res.data);
       return;
     }
 

@@ -5,33 +5,62 @@ import { server as tsServer, Node } from 'typescript/lib/tsserverlibrary';
 
 import * as ts from 'typescript';
 
+const createdInfoMap = new Map<string, tsServer.PluginCreateInfo>();
+
+export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
+  const currentDir = info.project.getCurrentDirectory();
+  info.project.projectService.logger.info(
+    `[TS-Faker][Create-Info][Current-Directory] ${currentDir}`,
+  );
+  createdInfoMap.set(currentDir, info);
+}
+
+function getMatchedInfo(fileName: string) {
+  let result: tsServer.PluginCreateInfo | undefined;
+  let lastMatchedLength = 0;
+
+  for (const [key, value] of createdInfoMap.entries()) {
+    if (fileName.startsWith(key) && key.length > lastMatchedLength) {
+      result = value;
+      lastMatchedLength = key.length;
+    }
+  }
+  if (!result) {
+    throw new Error('info not found');
+  }
+  return result;
+}
+
 let server: http.Server | undefined;
 
-export function startListen(options: { port: number; info: tsServer.PluginCreateInfo }) {
-  const { info, port } = options;
-  const { logger } = info.project.projectService;
+export function startListen(port: number) {
+  if (server) {
+    return;
+  }
+  server = createApp().listen(port, () => {
+    console.log(`[TS-Faker] Listening on port ${port}`);
+  });
+  return server;
+}
 
+export function restartListen(port: number) {
   if (server) {
     server.close();
     server = undefined;
   }
-
-  server = createApp({ info }).listen(port, () => {
-    logger.info(`[TS-Faker] Listening on port ${port}`);
-  });
-
-  return server;
+  startListen(port);
 }
 
-function createApp(options: { info: tsServer.PluginCreateInfo }) {
-  const { info } = options;
-  const logger = info.project.projectService.logger;
-
+function createApp() {
   const app = express();
   app.use(express.json());
 
   app.post('/get-type', (req, res) => {
     try {
+      const info = getMatchedInfo(req.body.fileName);
+
+      const logger = info.project.projectService.logger;
+
       logger.info(`[TS-Faker][File-Name] ${req.body.fileName}, ${req.body.position}`);
 
       const program = info.languageService.getProgram();
@@ -69,7 +98,7 @@ function createApp(options: { info: tsServer.PluginCreateInfo }) {
         }),
       );
     } catch (err) {
-      logger.info(`[TS-Faker] Error: ${err as any}, ${(err as any).stack}}`);
+      console.error(err);
       res.status(200).send(
         JSON.stringify({
           type: 'error',

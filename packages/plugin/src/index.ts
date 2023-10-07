@@ -2,35 +2,25 @@ import { LanguageServiceMode, server } from 'typescript/lib/tsserverlibrary';
 
 import { PluginConfig } from '@ts-faker/shared';
 
-import { startListen } from './service';
+import { startListen, restartListen, setCreatedInfo } from './service';
 
 const factory: server.PluginModuleFactory = () => {
-  let currentInfo: server.PluginCreateInfo | undefined;
-
   return {
     create(info) {
       if (info.project.projectService.serverMode !== LanguageServiceMode.Semantic) {
         return info.languageService;
       }
-      currentInfo = info;
 
-      startListen({
-        port: (info.config as PluginConfig).port,
-        info: info,
-      });
+      setCreatedInfo(info);
+
+      startListen(info.config.port!);
 
       return {
         ...info.languageService,
       };
     },
     onConfigurationChanged(config: Partial<PluginConfig>) {
-      if (!currentInfo) {
-        return;
-      }
-      startListen({
-        port: config.port!,
-        info: currentInfo,
-      });
+      restartListen(config.port!);
     },
   };
 };
