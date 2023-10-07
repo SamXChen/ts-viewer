@@ -38,9 +38,11 @@ export async function installDependencies(context: vscode.ExtensionContext) {
 
   logger.appendLine('Dependencies installed.');
 
-  vscode.window.showInformationMessage('[Ts-Viewer-Extension] Dependencies installed.', 'Reload').then((value) => {
-    if (value === 'Reload') {
-      vscode.commands.executeCommand('workbench.action.reloadWindow');
-    }
-  });
+  vscode.window
+    .showInformationMessage('[Ts-Viewer-Extension] Dependencies installed.', 'Reload')
+    .then((value) => {
+      if (value === 'Reload') {
+        vscode.commands.executeCommand('workbench.action.reloadWindow');
+      }
+    });
 }
