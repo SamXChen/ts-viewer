@@ -1,5 +1,4 @@
 import { LanguageServiceMode, server } from 'typescript/lib/tsserverlibrary';
-import 'open-typescript';
 
 import { PluginConfig } from '@ts-faker/shared';
 

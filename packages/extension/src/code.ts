@@ -41,6 +41,7 @@ export class HoverProvider implements vscode.HoverProvider {
       title: `ts-faker.full-type.${currentWordWithUpperFirst}.d.ts`,
       text: prettierTypeString,
       language: 'typescript',
+      commandList: ['editor.action.formatDocument'],
     });
 
     return new vscode.Hover([link], range);

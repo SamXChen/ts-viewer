@@ -54,6 +54,11 @@ async function viewImpl(index: string) {
     editor.document,
     indexInfo.data?.language ?? 'typescript',
   );
+  if (indexInfo.data?.commandList?.length > 0) {
+    for (const command of indexInfo.data.commandList) {
+      await vscode.commands.executeCommand(command);
+    }
+  }
 }
 
 function genViewLink(linkName: string, requestParams: any) {

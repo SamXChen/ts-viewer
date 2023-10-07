@@ -31,54 +31,52 @@ function createApp(options: { info: tsServer.PluginCreateInfo }) {
   app.use(express.json());
 
   app.post('/get-type', (req, res) => {
-    async function handle() {
-      try {
-        logger.info(`[TS-Faker][File-Name] ${req.body.fileName}, ${req.body.position}`);
+    try {
+      logger.info(`[TS-Faker][File-Name] ${req.body.fileName}, ${req.body.position}`);
 
-        const program = info.languageService.getProgram();
+      const program = info.languageService.getProgram();
 
-        const typeChecker = program?.getTypeChecker();
-        // @FIXME: getSourceFile sometimes return undefined
-        const sourceFile = program?.getSourceFile(req.body.fileName);
-        if (!sourceFile) {
-          throw new Error('sourceFile not found');
-        }
-        logger.info(`[TS-Faker][Source-File] ${sourceFile.fileName}`);
+      const typeChecker = program?.getTypeChecker();
+      // @FIXME: getSourceFile sometimes return undefined
+      const sourceFile = program?.getSourceFile(req.body.fileName);
 
-        const node = findNode(sourceFile.getChildren(), req.body.position);
-        if (!node) {
-          throw new Error('node not found');
-        }
-        logger.info(`[TS-Faker][Node] ${node.getText()}`);
+      const currentDirectory = program?.getCurrentDirectory();
+      logger.info(`[TS-Faker][Current-Directory] ${currentDirectory}`);
 
-        let type = typeChecker?.getTypeAtLocation(node);
-        let tryCount = 1;
-        while (((type?.flags ?? 0) & ts.TypeFlags.Any) === 0 && tryCount < 3) {
-          await new Promise((resolve) => setTimeout(resolve, 50 * tryCount));
-          type = typeChecker?.getTypeAtLocation(node);
-          tryCount++;
-        }
-
-        const typeInfoString = typeChecker?.typeToString(
-          type!,
-          undefined,
-          ts.TypeFormatFlags.NoTruncation,
-        );
-        logger.info(`[TS-Faker][Type-Info-String] ${typeInfoString}`);
-
-        res.status(200).send(
-          JSON.stringify({
-            type: 'success',
-            data: typeInfoString,
-          }),
-        );
-      } catch (err) {
-        logger.info(`[TS-Faker] Error: ${err as any}, ${(err as any).stack}}`);
-        info.languageService.clearSourceMapperCache();
-        res.status(500).send('Internal Server Error');
+      if (!sourceFile) {
+        throw new Error('sourceFile not found');
       }
+      logger.info(`[TS-Faker][Source-File] ${sourceFile.fileName}`);
+
+      const node = findNode(sourceFile.getChildren(), req.body.position);
+      if (!node) {
+        throw new Error('node not found');
+      }
+      logger.info(`[TS-Faker][Node] ${node.getText()}`);
+
+      const type = typeChecker?.getTypeAtLocation(node);
+      const typeInfoString = typeChecker?.typeToString(
+        type!,
+        undefined,
+        ts.TypeFormatFlags.NoTruncation,
+      );
+      logger.info(`[TS-Faker][Type-Info-String] ${typeInfoString}`);
+
+      res.status(200).send(
+        JSON.stringify({
+          type: 'success',
+          data: typeInfoString,
+        }),
+      );
+    } catch (err) {
+      logger.info(`[TS-Faker] Error: ${err as any}, ${(err as any).stack}}`);
+      res.status(200).send(
+        JSON.stringify({
+          type: 'error',
+          data: err,
+        }),
+      );
     }
-    handle();
   });
 
   return app;
