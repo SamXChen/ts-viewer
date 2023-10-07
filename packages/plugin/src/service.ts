@@ -66,7 +66,7 @@ function createApp() {
       const program = info.languageService.getProgram();
 
       const typeChecker = program?.getTypeChecker();
-      // @FIXME: getSourceFile sometimes return undefined
+
       const sourceFile = program?.getSourceFile(req.body.fileName);
 
       const currentDirectory = program?.getCurrentDirectory();
