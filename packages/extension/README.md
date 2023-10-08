@@ -2,6 +2,10 @@
 
 This is a [Visual Studio Code](https://code.visualstudio.com/) extension that allows you to view TypeScript Interfaces and Types entire information easily.
 
+## Environment
+
+```node```: >= v16.14.0
+
 ## Features
 
 - View the entire information of a TypeScript Interface or Type.
