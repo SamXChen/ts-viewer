@@ -2,7 +2,7 @@
   "name": "ts-viewer-extension",
   "displayName": "TS Viewer",
   "description": "Help View Full TypeScript Interface Information",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "author": "samxchen",
   "publisher": "samxchen",
   "icon": "images/icon.png",
@@ -51,7 +51,7 @@
     "axios": "1.5.1",
     "get-port": "6.1.2",
     "prettier": "2.7.1",
-    "ts-viewer-language-plugin": "^0.1.0"
+    "ts-viewer-language-plugin": "0.2.0"
   },
   "devDependencies": {
     "@ts-viewer/shared": "*",
