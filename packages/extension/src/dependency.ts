@@ -52,7 +52,7 @@ function implInstallDependencies(context: vscode.ExtensionContext) {
   const extensionPath = context.extension.extensionPath;
   return new Promise((resolve, reject) => {
     cp.exec(
-      'npm install --production',
+      'npm install --omit=dev',
       {
         cwd: extensionPath,
       },
