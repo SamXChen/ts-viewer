@@ -6,8 +6,8 @@
   "license": "MIT",
   "scripts": {
     "build": "turbo run build",
-    "prerelease": "lerna version --no-private",
-    "release": "lerna publish from-package --yes --no-private"
+    "prerelease": "lerna version",
+    "release": "lerna publish from-package --yes"
   },
   "devDependencies": {
     "@types/eslint": "8.4.7",
