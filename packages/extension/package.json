@@ -54,7 +54,7 @@
     "ts-viewer-language-plugin": "^0.3.1"
   },
   "devDependencies": {
-    "@ts-viewer/shared": "^0.3.0",
+    "@ts-viewer/shared": "*",
     "@types/node": "20.7.1",
     "@types/vscode": "1.82.0",
     "@vscode/vsce": "2.21.1",
