@@ -65,11 +65,11 @@ importers:
         specifier: 2.7.1
         version: 2.7.1
       ts-viewer-language-plugin:
-        specifier: ^0.2.8
+        specifier: ^0.3.0
         version: link:../plugin
     devDependencies:
       '@ts-viewer/shared':
-        specifier: '*'
+        specifier: ^0.3.0
         version: link:../shared
       '@types/node':
         specifier: 20.7.1
@@ -97,7 +97,7 @@ importers:
         version: 4.18.2
     devDependencies:
       '@ts-viewer/shared':
-        specifier: '*'
+        specifier: ^0.3.0
         version: link:../shared
       '@types/express':
         specifier: 4.17.18
