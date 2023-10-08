@@ -2,7 +2,7 @@
   "name": "ts-viewer-extension",
   "displayName": "TS Viewer",
   "description": "Help View Full TypeScript Interface Information",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "samxchen",
   "publisher": "samxchen",
   "icon": "images/icon.png",
@@ -57,9 +57,9 @@
     "@ts-viewer/shared": "*",
     "@types/node": "20.7.1",
     "@types/vscode": "1.82.0",
+    "@vscode/vsce": "2.21.1",
     "esbuild": "0.19.4",
     "esno": "0.17.0",
-    "typescript": "5.2.2",
-    "@vscode/vsce": "2.21.1"
+    "typescript": "5.2.2"
   }
 }
