@@ -30,8 +30,7 @@
     "onLanguage:typescript",
     "onLanguage:typescriptreact",
     "onLanguage:javascript",
-    "onLanguage:javascriptreact",
-    "onLanguage:vue"
+    "onLanguage:javascriptreact"
   ],
   "contributes": {
     "typescriptServerPlugins": [
