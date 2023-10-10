@@ -2,7 +2,7 @@
   "name": "ts-viewer-extension",
   "displayName": "TS Viewer",
   "description": "Help View Full TypeScript Interface Information",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "author": "samxchen",
   "publisher": "samxchen",
   "icon": "images/icon.png",
