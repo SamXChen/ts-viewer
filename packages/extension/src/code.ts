@@ -4,6 +4,7 @@ import { getType } from './api';
 import { selectors } from './constants';
 import type { PluginConnection } from './connection';
 import { createTypeInfoPayload, toViewRequest, type TypeInfoPayload } from './type-info';
+import { isVueTypeScriptDocument } from './vue';
 import { getViewService } from './webview';
 import { getExpandTypeScriptService } from './helper';
 
@@ -108,6 +109,13 @@ async function viewAtCursorImpl(connection: PluginConnection) {
     return;
   }
 
+  if (editor.document.languageId === 'vue' && !isVueTypeScriptDocument(editor.document)) {
+    vscode.window.showInformationMessage(
+      '[TS Viewer] Only Vue files with <script lang="ts"> or <script lang="tsx"> are supported.',
+    );
+    return;
+  }
+
   const range = editor.document.getWordRangeAtPosition(editor.selection.active);
   const typeInfo = await resolveTypeInfo(
     editor.document,
@@ -158,7 +166,15 @@ function getCacheKey(document: vscode.TextDocument, position: vscode.Position) {
 }
 
 function shouldSkipHoverDocument(document: vscode.TextDocument) {
-  return document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled';
+  if (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled') {
+    return true;
+  }
+
+  if (document.languageId === 'vue') {
+    return !isVueTypeScriptDocument(document);
+  }
+
+  return false;
 }
 
 function getSymbolName(document: vscode.TextDocument, range: vscode.Range | undefined) {
