@@ -24,6 +24,10 @@ export class ExpiringCache<TKey, TValue> {
       return undefined;
     }
 
+    // Move to end for LRU ordering
+    this.entries.delete(key);
+    this.entries.set(key, cached);
+
     return cached.value;
   }
 
