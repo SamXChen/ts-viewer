@@ -1,4 +1,10 @@
-import type { PluginConfig, PluginHealthResponse } from '@ts-viewer/shared';
+import {
+  PluginHealthKind,
+  PluginHealthRoutePath,
+  PluginLoopbackHost,
+  type PluginConfig,
+  type PluginHealthResponse,
+} from '@ts-viewer/shared';
 import axios from 'axios';
 import getPort from 'get-port';
 import { selectors } from './constants';
@@ -17,6 +23,7 @@ const HealthCheckTimeoutMs = 300;
 const HealthRetryCount = 8;
 const HealthRetryDelayMs = 150;
 const ReuseHealthTtlMs = 5000;
+const PortCandidateRange = 20;
 
 export interface PluginConnection extends vscode.Disposable {
   getPort(): number | undefined;
@@ -206,7 +213,7 @@ async function getAvailablePort(defaultPort: number, excludedPort?: number) {
 function buildPortCandidates(defaultPort: number, excludedPort?: number) {
   const candidates: number[] = [];
 
-  for (let offset = 0; offset < 20; offset += 1) {
+  for (let offset = 0; offset < PortCandidateRange; offset += 1) {
     const port = defaultPort + offset;
     if (port !== excludedPort) {
       candidates.push(port);
@@ -219,7 +226,7 @@ function buildPortCandidates(defaultPort: number, excludedPort?: number) {
 async function waitForHealthy(port: number, retryCount = HealthRetryCount) {
   for (let attempt = 0; attempt < retryCount; attempt += 1) {
     try {
-      const response = await axios.get<PluginHealthResponse>(`http://127.0.0.1:${port}/health`, {
+      const response = await axios.get<PluginHealthResponse>(`http://${PluginLoopbackHost}:${port}${PluginHealthRoutePath}`, {
         timeout: HealthCheckTimeoutMs,
       });
 
@@ -239,8 +246,12 @@ async function waitForHealthy(port: number, retryCount = HealthRetryCount) {
 }
 
 function isPluginHealthResponse(input: PluginHealthResponse | undefined, port: number) {
+  if (!input) {
+    return false;
+  }
+
   return (
-    input?.kind === 'ts-viewer-health' &&
+    input.kind === PluginHealthKind &&
     typeof input.port === 'number' &&
     input.port === port &&
     typeof input.projectCount === 'number'

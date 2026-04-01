@@ -1,4 +1,12 @@
-import type { GetTypeRequest, GetTypeResponse, PluginHealthResponse } from '@ts-viewer/shared';
+import {
+  PluginGetTypeRoutePath,
+  PluginHealthKind,
+  PluginHealthRoutePath,
+  PluginLoopbackHost,
+  type GetTypeRequest,
+  type GetTypeResponse,
+  type PluginHealthResponse,
+} from '@ts-viewer/shared';
 import express from 'express';
 import * as http from 'http';
 
@@ -13,9 +21,17 @@ import { resolveVueTypeInfo } from './vue';
 
 const createdInfoMap = new Map<string, tsServer.PluginCreateInfo>();
 
+const HttpStatusOk = 200;
+const JsonBodyLimit = '32kb';
+const TypeInfoCacheTtlMs = 1000;
+const TypeInfoCacheMaxSize = 64;
+const ServerKeepAliveTimeoutMs = 1000;
+const ServerHeadersTimeoutMs = 2000;
+const ServerRequestTimeoutMs = 5000;
+
 const typeInfoCache = new ExpiringCache<string, string>({
-  ttlMs: 1000,
-  maxSize: 64,
+  ttlMs: TypeInfoCacheTtlMs,
+  maxSize: TypeInfoCacheMaxSize,
 });
 
 export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
@@ -125,7 +141,7 @@ function createServer(port: number) {
   const app = createApp();
 
   return new Promise<{ port: number; server: http.Server }>((resolve, reject) => {
-    const nextServer = app.listen(port);
+    const nextServer = app.listen(port, PluginLoopbackHost);
     const onStartError = (error: Error) => {
       nextServer.off('listening', onListening);
       reject(error);
@@ -141,9 +157,9 @@ function createServer(port: number) {
 
     nextServer.once('error', onStartError);
     nextServer.once('listening', onListening);
-    nextServer.keepAliveTimeout = 1000;
-    nextServer.headersTimeout = 2000;
-    nextServer.requestTimeout = 5000;
+    nextServer.keepAliveTimeout = ServerKeepAliveTimeoutMs;
+    nextServer.headersTimeout = ServerHeadersTimeoutMs;
+    nextServer.requestTimeout = ServerRequestTimeoutMs;
     nextServer.on('error', (error) => {
       if (nextServer.listening) {
         console.error(error);
@@ -154,16 +170,16 @@ function createServer(port: number) {
 
 function createApp() {
   const app = express();
-  app.use(express.json({ limit: '32kb' }));
+  app.use(express.json({ limit: JsonBodyLimit }));
 
-  app.get('/health', (_req, res) => {
-    res.status(200).json(createHealthResponse());
+  app.get(PluginHealthRoutePath, (_req, res) => {
+    res.status(HttpStatusOk).json(createHealthResponse());
   });
 
-  app.post('/get-type', (req: express.Request<unknown, GetTypeResponse, GetTypeRequest>, res) => {
+  app.post(PluginGetTypeRoutePath, (req: express.Request<unknown, GetTypeResponse, GetTypeRequest>, res) => {
     try {
       if (!isGetTypeRequest(req.body)) {
-        res.status(200).json(createErrorResponse('Invalid request body'));
+        res.status(HttpStatusOk).json(createErrorResponse('Invalid request body'));
         return;
       }
 
@@ -186,7 +202,7 @@ function createApp() {
       const cachedTypeInfo = getCachedTypeInfo(cacheKey);
       if (cachedTypeInfo) {
         logger.info(`[TS-Viewer][Cache-Hit] ${request.fileName}, ${request.position}`);
-        res.status(200).json(createSuccessResponse(cachedTypeInfo));
+        res.status(HttpStatusOk).json(createSuccessResponse(cachedTypeInfo));
         return;
       }
 
@@ -222,10 +238,10 @@ function createApp() {
       setCachedTypeInfo(cacheKey, typeInfoString);
       logger.info(`[TS-Viewer][Type-Info-Length] ${typeInfoString.length}`);
 
-      res.status(200).json(createSuccessResponse(typeInfoString));
+      res.status(HttpStatusOk).json(createSuccessResponse(typeInfoString));
     } catch (err) {
       console.error(err);
-      res.status(200).json(createErrorResponse(err));
+      res.status(HttpStatusOk).json(createErrorResponse(err));
     }
   });
 
@@ -251,7 +267,7 @@ function createSuccessResponse(data: string): GetTypeResponse {
 function createHealthResponse(): PluginHealthResponse {
   pruneCreatedInfoMap();
   return {
-    kind: 'ts-viewer-health',
+    kind: PluginHealthKind,
     port: serverState?.port ?? 0,
     projectCount: createdInfoMap.size,
   };

@@ -1,9 +1,11 @@
+import { PluginHealthKind } from './constants';
+
 export interface PluginConfig {
   port: number;
 }
 
 export interface PluginHealthResponse {
-  kind: 'ts-viewer-health';
+  kind: typeof PluginHealthKind;
   port: number;
   projectCount: number;
 }

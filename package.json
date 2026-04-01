@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build": "turbo run build",
-    "validate:fixtures": "pnpm validate:fixtures:static && pnpm test:fixtures",
+    "validate:fixtures": "pnpm --filter @ts-viewer/shared build && pnpm validate:fixtures:static && pnpm test:fixtures",
     "validate:fixtures:static": "tsx ./tests/scripts/validate-smoke-fixtures.ts",
     "test:fixtures": "pnpm test:fixtures:usage && pnpm test:fixtures:interaction && pnpm test:fixtures:vue && pnpm test:fixtures:stability",
     "test:fixtures:usage": "tsx ./tests/scripts/run-fixture-usage-smoke.ts",

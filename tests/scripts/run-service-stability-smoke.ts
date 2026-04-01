@@ -26,6 +26,10 @@ interface ServiceModule {
   startListen(port: number): Promise<void>;
 }
 
+const LoopbackHost = '127.0.0.1';
+const GetTypeRoutePath = '/get-type';
+const StabilityFixtureNames = ['typescript-workspace', 'vue-workspace'] as const;
+
 void main();
 
 async function main() {
@@ -90,7 +94,7 @@ async function loadServiceModule() {
 
 function createFixturePrograms() {
   const map = new Map<string, ts.Program>();
-  for (const fixtureName of ['typescript-workspace', 'vue-workspace']) {
+  for (const fixtureName of StabilityFixtureNames) {
     const fixtureRoot = path.join(fixturesRoot, fixtureName);
     const configPath = path.join(fixtureRoot, 'tsconfig.json');
     const readResult = ts.readConfigFile(configPath, ts.sys.readFile);
@@ -134,7 +138,7 @@ async function requestTypeInfo(port: number, scenario: StabilityScenario) {
   const position = sourceText.indexOf(scenario.searchText);
   assert(position >= 0, `Unable to find search text for stability scenario ${scenario.name}`);
 
-  const response = await fetch(`http://127.0.0.1:${port}/get-type`, {
+  const response = await fetch(`http://${LoopbackHost}:${port}${GetTypeRoutePath}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -161,7 +165,7 @@ async function getAvailablePort(excludedPort?: number): Promise<number> {
   const server = await new Promise<net.Server>((resolve, reject) => {
     const nextServer = net.createServer();
     nextServer.once('error', reject);
-    nextServer.listen(0, '127.0.0.1', () => resolve(nextServer));
+    nextServer.listen(0, LoopbackHost, () => resolve(nextServer));
   });
 
   const address = server.address();

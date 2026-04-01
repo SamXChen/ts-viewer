@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 const ViewCommandName = 'ts-viewer.view';
 const DocumentProviderName = ViewCommandName + '.document-provider';
+const ViewRequestKeyLength = 10;
 
 export interface ViewRequestParams {
   title?: string;
@@ -21,7 +22,7 @@ const ViewRequestMap = new Map<
 
 function setViewRequestMap(requestParams: ViewRequestParams) {
   const createTime = Date.now();
-  const key = `${createTime}-${Math.random().toString(36).slice(-10)}`;
+  const key = `${createTime}-${Math.random().toString(36).slice(-ViewRequestKeyLength)}`;
 
   ViewRequestMap.set(key, {
     createTime,

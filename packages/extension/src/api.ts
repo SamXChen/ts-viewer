@@ -1,4 +1,9 @@
-import type { GetTypeRequest, GetTypeResponse } from '@ts-viewer/shared';
+import {
+  PluginGetTypeRoutePath,
+  PluginLoopbackHost,
+  type GetTypeRequest,
+  type GetTypeResponse,
+} from '@ts-viewer/shared';
 import axios from 'axios';
 import * as vscode from 'vscode';
 import type { PluginConnection } from './connection';
@@ -68,10 +73,14 @@ export async function getType(
 }
 
 async function requestTypeInfo(request: GetTypeRequest, port: number, signal: AbortSignal) {
-  const result = await axios.post<GetTypeResponse>(`http://127.0.0.1:${port}/get-type`, request, {
+  const result = await axios.post<GetTypeResponse>(
+    `http://${PluginLoopbackHost}:${port}${PluginGetTypeRoutePath}`,
+    request,
+    {
     timeout: RequestTimeoutMs,
     signal,
-  });
+    },
+  );
   return result.data;
 }
 

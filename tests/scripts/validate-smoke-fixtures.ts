@@ -142,7 +142,9 @@ function validateConnectionSource(source: string) {
 
 function validateServiceSource(source: string) {
   for (const snippet of [
-    "app.get('/health'",
+    'PluginHealthRoutePath',
+    'PluginGetTypeRoutePath',
+    'PluginLoopbackHost',
     'pruneCreatedInfoMap',
     'getDirectSourceFileMatch',
     'normalizeFsPath',
