@@ -12,7 +12,15 @@ const ViewAtCursorCommandName = 'ts-viewer.view-at-cursor';
 const HoverCacheTtlMs = 1000;
 const MaxHoverCacheSize = 64;
 
-const outputChannel = vscode.window.createOutputChannel('TS Viewer');
+let outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel('TS Viewer');
+
+export function setSharedOutputChannel(channel: vscode.OutputChannel) {
+  outputChannel = channel;
+}
+
+export function getSharedOutputChannel() {
+  return outputChannel;
+}
 
 export class HoverProvider implements vscode.HoverProvider {
   private readonly cache = new Map<string, { expiresAt: number; value: TypeInfoPayload | null }>();
@@ -86,10 +94,6 @@ export class HoverProvider implements vscode.HoverProvider {
 
     return value;
   }
-}
-
-export function getTypeInfoOutputChannel() {
-  return outputChannel;
 }
 
 export function getViewAtCursorService(connection: PluginConnection) {

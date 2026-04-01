@@ -31,37 +31,65 @@ export interface PluginConnection extends vscode.Disposable {
   getOutputChannel(): vscode.OutputChannel;
 }
 
-export async function createPluginConnection(defaultPort: number) {
+export async function createPluginConnection(
+  defaultPort: number,
+  outputChannel: vscode.OutputChannel,
+) {
   const extension = vscode.extensions.getExtension(typeScriptExtensionId);
   if (!extension) {
+    outputChannel.appendLine(
+      `[connection] TypeScript extension (${typeScriptExtensionId}) not found`,
+    );
+    void vscode.window.showWarningMessage(
+      '[TS Viewer] TypeScript language features extension is not available. TS Viewer requires it to function.',
+    );
     return;
   }
 
-  await extension.activate();
+  try {
+    await extension.activate();
+  } catch (error) {
+    outputChannel.appendLine(
+      `[connection] TypeScript extension activation failed: ${String(error)}`,
+    );
+    return;
+  }
+
   const extApi = extension.exports as Api | undefined;
   if (!extApi?.getAPI) {
+    outputChannel.appendLine('[connection] TypeScript extension API is not available (no getAPI)');
+    void vscode.window.showWarningMessage(
+      '[TS Viewer] Unable to access TypeScript extension API. Please try reloading the window.',
+    );
     return;
   }
 
   const api = extApi.getAPI(0);
   if (!api) {
+    outputChannel.appendLine('[connection] TypeScript extension API v0 returned undefined');
+    void vscode.window.showWarningMessage(
+      '[TS Viewer] TypeScript extension API version is incompatible. Please update VS Code.',
+    );
     return;
   }
 
-  const connection = new PluginConnectionManager(api, defaultPort);
+  const connection = new PluginConnectionManager(api, defaultPort, outputChannel);
   return connection;
 }
 
 class PluginConnectionManager implements PluginConnection {
   private currentPort: number | undefined;
-  private readonly outputChannel = vscode.window.createOutputChannel('TS Viewer Connection');
   private readonly subscriptions: vscode.Disposable[] = [];
   private pendingConfigure: Promise<number | undefined> = Promise.resolve(undefined);
   private isDisposed = false;
   private lastHealthyPort: number | undefined;
   private lastHealthCheckAt = 0;
 
-  constructor(private readonly api: ApiV0, private readonly defaultPort: number) {
+  constructor(
+    private readonly api: ApiV0,
+    private readonly defaultPort: number,
+    private readonly outputChannel: vscode.OutputChannel,
+  ) {
     this.subscriptions.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
         void this.ensureConnected('workspace folders changed');
@@ -100,7 +128,6 @@ class PluginConnectionManager implements PluginConnection {
     for (const subscription of this.subscriptions) {
       subscription.dispose();
     }
-    this.outputChannel.dispose();
   }
 
   private enqueueConfigure(reason: string, forceNewPort: boolean) {
@@ -155,15 +182,18 @@ class PluginConnectionManager implements PluginConnection {
     this.outputChannel.appendLine(`[connection] configure ${pluginId} on port ${port} (${reason})`);
     this.api.configurePlugin(pluginId, config);
 
-    const healthy = await waitForHealthy(port);
+    const healthy = await waitForHealthy(port, HealthRetryCount, this.outputChannel);
     if (!healthy) {
-      this.outputChannel.appendLine(`[connection] health check failed on port ${port}`);
+      this.outputChannel.appendLine(
+        `[connection] health check failed on port ${port} after ${HealthRetryCount} attempts`,
+      );
       if (this.currentPort === port) {
         this.currentPort = undefined;
       }
       return undefined;
     }
 
+    this.outputChannel.appendLine(`[connection] connected on port ${port}`);
     this.currentPort = port;
     this.lastHealthyPort = port;
     this.lastHealthCheckAt = Date.now();
@@ -176,7 +206,7 @@ class PluginConnectionManager implements PluginConnection {
       return true;
     }
 
-    const healthy = await waitForHealthy(port, 1);
+    const healthy = await waitForHealthy(port, 1, this.outputChannel);
     if (healthy) {
       this.lastHealthyPort = port;
       this.lastHealthCheckAt = now;
@@ -218,7 +248,11 @@ function buildPortCandidates(defaultPort: number, excludedPort?: number) {
   return candidates;
 }
 
-async function waitForHealthy(port: number, retryCount = HealthRetryCount) {
+async function waitForHealthy(
+  port: number,
+  retryCount: number,
+  outputChannel: vscode.OutputChannel,
+) {
   for (let attempt = 0; attempt < retryCount; attempt += 1) {
     try {
       const response = await axios.get<PluginHealthResponse>(
@@ -231,8 +265,19 @@ async function waitForHealthy(port: number, retryCount = HealthRetryCount) {
       if (isPluginHealthResponse(response.data, port)) {
         return true;
       }
-    } catch {
-      // noop
+
+      if (retryCount > 1) {
+        outputChannel.appendLine(
+          `[health] port ${port} attempt ${attempt + 1}/${retryCount}: unexpected response`,
+        );
+      }
+    } catch (error) {
+      if (retryCount > 1) {
+        const code = axios.isAxiosError(error) ? error.code ?? 'UNKNOWN' : 'UNKNOWN';
+        outputChannel.appendLine(
+          `[health] port ${port} attempt ${attempt + 1}/${retryCount}: ${code}`,
+        );
+      }
     }
 
     if (attempt + 1 < retryCount) {

@@ -102,7 +102,8 @@ function scheduleListen(port: number) {
     .catch(() => undefined)
     .then(() => ensureListening(port))
     .catch((error) => {
-      console.error(error);
+      const code = (error as { code?: string })?.code ?? 'UNKNOWN';
+      console.error(`[TS-Viewer] failed to listen on port ${port} (${code}):`, error);
     });
 
   return restartPromise;
