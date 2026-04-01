@@ -1,5 +1,6 @@
 dist/
 node_modules/
+.agent/
 .turbo/
 .DS_Store
 .npmrc

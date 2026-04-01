@@ -2,19 +2,27 @@ import * as vscode from 'vscode';
 
 const ViewCommandName = 'ts-viewer.view';
 const DocumentProviderName = ViewCommandName + '.document-provider';
+const ViewRequestKeyLength = 10;
+
+export interface ViewRequestParams {
+  title?: string;
+  text: string;
+  language?: string;
+  commandList?: string[];
+}
 
 const MaxViewRequestMapSize = 6;
 const ViewRequestMap = new Map<
   string,
   {
     createTime: number;
-    data: any;
+    data: ViewRequestParams;
   }
 >();
 
-function setViewRequestMap(requestParams: any) {
+function setViewRequestMap(requestParams: ViewRequestParams) {
   const createTime = Date.now();
-  const key = `${createTime}-${Math.random().toString(36).slice(-10)}`;
+  const key = `${createTime}-${Math.random().toString(36).slice(-ViewRequestKeyLength)}`;
 
   ViewRequestMap.set(key, {
     createTime,
@@ -54,14 +62,18 @@ async function viewImpl(index: string) {
     editor.document,
     indexInfo.data?.language ?? 'typescript',
   );
-  if (indexInfo.data?.commandList?.length > 0) {
-    for (const command of indexInfo.data.commandList) {
-      await vscode.commands.executeCommand(command);
-    }
+  const commandList = indexInfo.data.commandList ?? [];
+  for (const command of commandList) {
+    await vscode.commands.executeCommand(command);
   }
 }
 
-function genViewLink(linkName: string, requestParams: any) {
+async function openView(requestParams: ViewRequestParams) {
+  const index = setViewRequestMap(requestParams);
+  await viewImpl(index);
+}
+
+function genViewLink(linkName: string, requestParams: ViewRequestParams) {
   const index = setViewRequestMap(requestParams);
   const args = [index];
   const encodedArgs = encodeURIComponent(JSON.stringify(args));
@@ -90,5 +102,6 @@ export function getViewService() {
     command: [ViewCommandName, viewImpl],
     documentProvider: [DocumentProviderName, documentProviderImpl],
     genViewLink,
+    openView,
   } as const;
 }

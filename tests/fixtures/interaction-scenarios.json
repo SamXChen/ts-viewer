@@ -1,0 +1,24 @@
+[
+  {
+    "name": "hover-preview-expanded-user",
+    "usageScenario": "typescript-expanded-user",
+    "symbolName": "ExpandedUser",
+    "expectedPreviewIncludes": [
+      "type ExpandedUser = {",
+      "preferences: Record<string, { enabled: boolean; label: string }>;"
+    ],
+    "expectEllipsis": false,
+    "expectedTitle": "ts-viewer.full-type.ExpandedUser.d.ts"
+  },
+  {
+    "name": "hover-preview-expanded-audit-trail",
+    "usageScenario": "typescript-expanded-audit-trail",
+    "symbolName": "ExpandedAuditTrail",
+    "expectedPreviewIncludes": [
+      "type ExpandedAuditTrail = {",
+      "createdAt: string;"
+    ],
+    "expectEllipsis": true,
+    "expectedTitle": "ts-viewer.full-type.ExpandedAuditTrail.d.ts"
+  }
+]

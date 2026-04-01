@@ -10,7 +10,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "images"
   ],
   "repository": {
     "url": "https://github.com/SamXChen/ts-viewer.git"
@@ -38,27 +39,47 @@
         "name": "ts-viewer-language-plugin",
         "enableForWorkspaceTypeScriptVersions": true
       }
+    ],
+    "commands": [
+      {
+        "command": "ts-viewer.view-at-cursor",
+        "title": "View Type At Cursor",
+        "category": "TS Viewer"
+      },
+      {
+        "command": "ts-viewer.copy-expand-typescript",
+        "title": "Copy Expand Helper",
+        "category": "TS Viewer"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "ts-viewer.view-at-cursor",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
+        "when": "editorTextFocus && !editorReadonly && (editorLangId == typescript || editorLangId == typescriptreact || editorLangId == javascript || editorLangId == javascriptreact || editorLangId == vue)"
+      }
     ]
   },
   "scripts": {
     "build:dts": "tsc",
     "build:bundle": "esno ./scripts/build.ts",
     "build": "pnpm build:bundle && pnpm build:dts",
-    "package": "vsce package --no-dependencies --githubBranch main"
+    "package": "esno ./scripts/package.ts"
   },
   "dependencies": {
     "axios": "1.5.1",
     "get-port": "6.1.2",
-    "prettier": "2.7.1",
-    "ts-viewer-language-plugin": "^0.3.3"
+    "ts-viewer-language-plugin": "workspace:^"
   },
   "devDependencies": {
-    "@ts-viewer/shared": "*",
+    "@ts-viewer/shared": "workspace:*",
     "@types/node": "20.7.1",
     "@types/vscode": "1.82.0",
     "@vscode/vsce": "2.21.1",
     "esbuild": "0.19.4",
     "esno": "0.17.0",
+    "prettier": "2.7.1",
     "typescript": "5.2.2"
   }
 }

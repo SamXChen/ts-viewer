@@ -1,0 +1,12 @@
+[
+  {
+    "name": "typescript-restart-expanded-user",
+    "fixture": "typescript-workspace",
+    "file": "src/index.ts",
+    "searchText": "ExpandedUser",
+    "expectedIncludes": [
+      "profile: {",
+      "preferences: Record<string, { enabled: boolean; label: string; }>"
+    ]
+  }
+]

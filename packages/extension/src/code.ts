@@ -1,79 +1,188 @@
 import * as vscode from 'vscode';
 
-import prettier from 'prettier';
-
 import { getType } from './api';
+import { selectors } from './constants';
+import type { PluginConnection } from './connection';
+import { createTypeInfoPayload, toViewRequest, type TypeInfoPayload } from './type-info';
+import { isVueTypeScriptDocument } from './vue';
 import { getViewService } from './webview';
 import { getExpandTypeScriptService } from './helper';
 
+const ViewAtCursorCommandName = 'ts-viewer.view-at-cursor';
+const HoverCacheTtlMs = 1000;
+const MaxHoverCacheSize = 64;
+
+let outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel('TS Viewer');
+
+export function setSharedOutputChannel(channel: vscode.OutputChannel) {
+  outputChannel = channel;
+}
+
+export function getSharedOutputChannel() {
+  return outputChannel;
+}
+
 export class HoverProvider implements vscode.HoverProvider {
-  constructor(private context: vscode.ExtensionContext, private port: number) {}
+  private readonly cache = new Map<string, { expiresAt: number; value: TypeInfoPayload | null }>();
+
+  constructor(private readonly connection: PluginConnection) {}
 
   async provideHover(
     document: vscode.TextDocument,
     position: vscode.Position,
+    token: vscode.CancellationToken,
   ): Promise<vscode.Hover | null | undefined> {
+    if (shouldSkipHoverDocument(document)) {
+      return;
+    }
+
     const range = document.getWordRangeAtPosition(position);
-
-    const res = await getType(document, position, this.port);
-    if (!res) {
-      return;
-    }
-    if (res.type === 'error') {
-      console.error('error', res.data);
+    const typeInfo = await this.resolveTypeInfo(document, position, range, token);
+    if (token.isCancellationRequested || !typeInfo) {
       return;
     }
 
-    const typeString = res.data ?? '';
-    if (!typeString) {
-      return;
-    }
-
-    const currentWord = document.getText(range);
-    const currentWordWithUpperFirst = currentWord.replace(/^\w/, (c) => c.toUpperCase());
-
-    const validTypeString = ensureTypeStringValid(typeString, currentWordWithUpperFirst);
-
-    let prettierTypeString = validTypeString;
-    try {
-      prettierTypeString = prettier.format(validTypeString, {
-        parser: 'typescript',
-      });
-    } catch {
-      // noop
-    }
-
-    const link = getViewService().genViewLink('View Type Info', {
-      title: `ts-viewer.full-type.${currentWordWithUpperFirst}.d.ts`,
-      text: prettierTypeString,
-      language: 'typescript',
-      commandList: ['editor.action.formatDocument'],
-    });
+    const label = new vscode.MarkdownString('TS Viewer');
+    const link = getViewService().genViewLink('View Full Type', toViewRequest(typeInfo));
 
     const expandTypeScriptLink = getExpandTypeScriptService().getExpandTypeScriptLink();
 
-    return new vscode.Hover([link, expandTypeScriptLink], range);
+    return new vscode.Hover([label, link, expandTypeScriptLink], range);
+  }
+
+  private async resolveTypeInfo(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    range: vscode.Range | undefined,
+    cancellationToken?: vscode.CancellationToken,
+  ) {
+    const cacheKey = getCacheKey(document, position);
+    const now = Date.now();
+
+    const cached = this.cache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
+
+    if (cached) {
+      this.cache.delete(cacheKey);
+    }
+
+    const value = await resolveTypeInfo(
+      document,
+      position,
+      range,
+      this.connection,
+      cancellationToken,
+    );
+    if (cancellationToken?.isCancellationRequested) {
+      return null;
+    }
+
+    this.cache.set(cacheKey, {
+      expiresAt: now + HoverCacheTtlMs,
+      value,
+    });
+
+    while (this.cache.size > MaxHoverCacheSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (!firstKey) {
+        break;
+      }
+      this.cache.delete(firstKey);
+    }
+
+    return value;
   }
 }
 
-function ensureTypeStringValid(input: string, currentWord: string): string {
-  if (!input) {
-    return '';
+export function getViewAtCursorService(connection: PluginConnection) {
+  return {
+    command: [ViewAtCursorCommandName, () => viewAtCursorImpl(connection)],
+  } as const;
+}
+
+async function viewAtCursorImpl(connection: PluginConnection) {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return;
   }
-  if (input.startsWith('type')) {
-    return input;
+
+  if (!selectors.includes(editor.document.languageId)) {
+    vscode.window.showInformationMessage('[TS Viewer] The active editor is not supported.');
+    return;
   }
-  if (input.startsWith('interface')) {
-    return input;
+
+  if (editor.document.languageId === 'vue' && !isVueTypeScriptDocument(editor.document)) {
+    vscode.window.showInformationMessage(
+      '[TS Viewer] Only Vue files with <script lang="ts"> or <script lang="tsx"> are supported.',
+    );
+    return;
   }
-  if (input.startsWith('enum')) {
-    return input;
+
+  const range = editor.document.getWordRangeAtPosition(editor.selection.active);
+  const typeInfo = await resolveTypeInfo(
+    editor.document,
+    editor.selection.active,
+    range,
+    connection,
+  );
+  if (!typeInfo) {
+    vscode.window.showInformationMessage(
+      '[TS Viewer] No type information was found at the cursor.',
+    );
+    return;
   }
-  if (input.startsWith('declare')) {
-    return input;
+
+  await getViewService().openView(toViewRequest(typeInfo));
+}
+
+async function resolveTypeInfo(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+  range: vscode.Range | undefined,
+  connection: PluginConnection,
+  cancellationToken?: vscode.CancellationToken,
+) {
+  const res = await getType(document, position, connection, {
+    cancellationToken,
+  });
+  if (!res) {
+    return null;
   }
-  if (input.startsWith('export')) {
-    return input;
+
+  if (res.type === 'error') {
+    outputChannel.appendLine(`[type-info] ${res.data}`);
+    return null;
   }
-  return `type ${currentWord} = ${input}`;
+
+  const typeString = res.data?.trim();
+  if (!typeString) {
+    return null;
+  }
+
+  const symbolName = getSymbolName(document, range);
+  return createTypeInfoPayload(typeString, symbolName);
+}
+
+function getCacheKey(document: vscode.TextDocument, position: vscode.Position) {
+  return `${document.uri.toString()}:${document.version}:${document.offsetAt(position)}`;
+}
+
+function shouldSkipHoverDocument(document: vscode.TextDocument) {
+  if (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled') {
+    return true;
+  }
+
+  if (document.languageId === 'vue') {
+    return !isVueTypeScriptDocument(document);
+  }
+
+  return false;
+}
+
+function getSymbolName(document: vscode.TextDocument, range: vscode.Range | undefined) {
+  const currentWord = range ? document.getText(range).trim() : '';
+  const fallbackWord = currentWord || 'TypeInfo';
+  return fallbackWord.replace(/^\w/, (char) => char.toUpperCase());
 }
