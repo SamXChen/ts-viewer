@@ -57,7 +57,7 @@
         "command": "ts-viewer.view-at-cursor",
         "key": "ctrl+alt+v",
         "mac": "cmd+alt+v",
-        "when": "editorTextFocus && !editorReadonly && (editorLangId == typescript || editorLangId == typescriptreact || editorLangId == javascript || editorLangId == javascriptreact)"
+        "when": "editorTextFocus && !editorReadonly && (editorLangId == typescript || editorLangId == typescriptreact || editorLangId == javascript || editorLangId == javascriptreact || editorLangId == vue)"
       }
     ]
   },

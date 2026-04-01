@@ -1,6 +1,6 @@
 import type * as vscode from 'vscode';
 
-export const selectors = ['typescript', 'typescriptreact', 'javascript', 'javascriptreact'];
+export const selectors = ['typescript', 'typescriptreact', 'javascript', 'javascriptreact', 'vue'];
 
 export const probeSelectors = ['typescript', 'typescriptreact', 'javascript', 'javascriptreact'];
 
@@ -9,6 +9,7 @@ export const hoverSelectors: vscode.DocumentFilter[] = [
   { language: 'typescriptreact', scheme: 'file' },
   { language: 'javascript', scheme: 'file' },
   { language: 'javascriptreact', scheme: 'file' },
+  { language: 'vue', scheme: 'file' },
   { language: 'typescript', scheme: 'untitled' },
   { language: 'typescriptreact', scheme: 'untitled' },
   { language: 'javascript', scheme: 'untitled' },
