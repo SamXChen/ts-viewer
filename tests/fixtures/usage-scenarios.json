@@ -1,0 +1,62 @@
+[
+  {
+    "name": "typescript-expanded-user",
+    "fixture": "typescript-workspace",
+    "tsconfig": "tsconfig.json",
+    "file": "src/index.ts",
+    "symbol": "ExpandedUser",
+    "expectedIncludes": [
+      "profile: {",
+      "tags: string[];",
+      "preferences: Record<string, { enabled: boolean; label: string; }>;"
+    ]
+  },
+  {
+    "name": "typescript-expanded-audit-trail",
+    "fixture": "typescript-workspace",
+    "tsconfig": "tsconfig.json",
+    "file": "src/index.ts",
+    "symbol": "ExpandedAuditTrail",
+    "expectedIncludes": [
+      "summary: {",
+      "events: { id: string; actor: { id: string; role: \"admin\" | \"member\"; }; metadata: { source: \"web\" | \"api\"; tags: string[]; region: \"us\" | \"eu\" | \"apac\"; requestId: string; }; latencyMs: number; }[];",
+      "checkpoints: { name: string; status: \"pending\" | \"completed\"; owner: { id: string; team: \"platform\" | \"product\"; }; }[];",
+      "notifications: { channel: \"email\" | \"slack\"; deliveredAt: string; recipient: { id: string; locale: \"en\" | \"zh\"; }; }[];"
+    ]
+  },
+  {
+    "name": "javascript-viewer-user",
+    "fixture": "javascript-workspace",
+    "tsconfig": "tsconfig.json",
+    "file": "src/index.js",
+    "symbol": "viewerUser",
+    "expectedIncludes": [
+      "profile: {",
+      "roles: string[];",
+      "flags: Record<string, { enabled: boolean; weight: number; }>;"
+    ]
+  },
+  {
+    "name": "tsx-expanded-panel-props",
+    "fixture": "tsx-workspace",
+    "tsconfig": "tsconfig.json",
+    "file": "src/app.tsx",
+    "symbol": "ExpandedPanelProps",
+    "expectedIncludes": [
+      "actions: { id: string; label: string; }[];",
+      "title: string;"
+    ]
+  },
+  {
+    "name": "vue-script-setup-user-profile",
+    "kind": "vue-script-setup",
+    "fixture": "vue-workspace",
+    "tsconfig": "tsconfig.json",
+    "file": "src/App.vue",
+    "symbol": "UserProfile",
+    "expectedIncludes": [
+      "id: string;",
+      "roles: string[];"
+    ]
+  }
+]

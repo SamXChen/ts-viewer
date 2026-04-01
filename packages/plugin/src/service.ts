@@ -1,6 +1,7 @@
 import type { GetTypeRequest, GetTypeResponse, PluginHealthResponse } from '@ts-viewer/shared';
 import express from 'express';
 import * as http from 'http';
+import * as path from 'path';
 
 import { server as tsServer, Node } from 'typescript/lib/tsserverlibrary';
 
@@ -13,7 +14,7 @@ const MaxTypeCacheSize = 64;
 const typeInfoCache = new Map<string, { expiresAt: number; value: string }>();
 
 export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
-  const currentDir = info.project.getCurrentDirectory();
+  const currentDir = normalizeFsPath(info.project.getCurrentDirectory());
   info.project.projectService.logger.info(
     `[TS-Viewer][Create-Info][Current-Directory] ${currentDir}`,
   );
@@ -21,11 +22,19 @@ export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
 }
 
 function getMatchedInfo(fileName: string) {
+  pruneCreatedInfoMap();
+
+  const directMatch = getDirectSourceFileMatch(fileName);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  const normalizedFileName = normalizeFsPath(fileName);
   let result: tsServer.PluginCreateInfo | undefined;
   let lastMatchedLength = 0;
 
   for (const [key, value] of createdInfoMap.entries()) {
-    if (fileName.startsWith(key) && key.length > lastMatchedLength) {
+    if (isPathInside(normalizedFileName, key) && key.length > lastMatchedLength) {
       result = value;
       lastMatchedLength = key.length;
     }
@@ -63,6 +72,7 @@ async function ensureListening(port: number) {
     return;
   }
 
+  clearTypeInfoCache();
   await closeServer();
   serverState = await createServer(port);
 }
@@ -229,6 +239,7 @@ function createSuccessResponse(data: string): GetTypeResponse {
 }
 
 function createHealthResponse(): PluginHealthResponse {
+  pruneCreatedInfoMap();
   return {
     kind: 'ts-viewer-health',
     port: serverState?.port ?? 0,
@@ -286,4 +297,46 @@ function pruneTypeInfoCache() {
       typeInfoCache.delete(key);
     }
   }
+}
+
+function clearTypeInfoCache() {
+  typeInfoCache.clear();
+}
+
+function pruneCreatedInfoMap() {
+  for (const [key, info] of createdInfoMap.entries()) {
+    const program = info.languageService.getProgram();
+    if (!program) {
+      createdInfoMap.delete(key);
+    }
+  }
+}
+
+function getDirectSourceFileMatch(fileName: string) {
+  let result: tsServer.PluginCreateInfo | undefined;
+  let lastMatchedLength = 0;
+
+  for (const [key, info] of createdInfoMap.entries()) {
+    const program = info.languageService.getProgram();
+    if (!program?.getSourceFile(fileName)) {
+      continue;
+    }
+
+    if (key.length > lastMatchedLength) {
+      result = info;
+      lastMatchedLength = key.length;
+    }
+  }
+
+  return result;
+}
+
+function isPathInside(fileName: string, directory: string) {
+  const relativePath = path.relative(directory, fileName);
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
+}
+
+function normalizeFsPath(fileName: string) {
+  const normalized = path.normalize(fileName);
+  return ts.sys.useCaseSensitiveFileNames ? normalized : normalized.toLowerCase();
 }

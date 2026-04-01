@@ -1,6 +1,7 @@
 import type { PluginConfig, PluginHealthResponse } from '@ts-viewer/shared';
 import axios from 'axios';
 import getPort from 'get-port';
+import { selectors } from './constants';
 import { pluginId, typeScriptExtensionId } from './constants';
 import * as vscode from 'vscode';
 
@@ -15,6 +16,7 @@ interface Api {
 const HealthCheckTimeoutMs = 300;
 const HealthRetryCount = 8;
 const HealthRetryDelayMs = 150;
+const ReuseHealthTtlMs = 5000;
 
 export interface PluginConnection extends vscode.Disposable {
   getPort(): number | undefined;
@@ -51,6 +53,8 @@ class PluginConnectionManager implements PluginConnection {
   private readonly subscriptions: vscode.Disposable[] = [];
   private pendingConfigure: Promise<number | undefined> = Promise.resolve(undefined);
   private isDisposed = false;
+  private lastHealthyPort: number | undefined;
+  private lastHealthCheckAt = 0;
 
   constructor(
     private readonly api: ApiV0,
@@ -59,6 +63,16 @@ class PluginConnectionManager implements PluginConnection {
     this.subscriptions.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
         void this.ensureConnected('workspace folders changed');
+      }),
+    );
+    this.subscriptions.push(
+      vscode.workspace.onDidOpenTextDocument((document) => {
+        this.probeForSupportedDocument(document, 'supported document opened');
+      }),
+    );
+    this.subscriptions.push(
+      vscode.window.onDidChangeActiveTextEditor((editor) => {
+        this.probeForSupportedDocument(editor?.document, 'active editor changed');
       }),
     );
   }
@@ -101,6 +115,14 @@ class PluginConnectionManager implements PluginConnection {
   }
 
   private async configure(reason: string, forceNewPort: boolean) {
+    const currentPort = this.currentPort;
+    if (!forceNewPort && currentPort) {
+      const isHealthy = await this.isPortHealthy(currentPort, reason);
+      if (isHealthy) {
+        return currentPort;
+      }
+    }
+
     const preferredPort =
       forceNewPort || !this.currentPort
         ? await getAvailablePort(this.defaultPort, forceNewPort ? this.currentPort : undefined)
@@ -134,11 +156,44 @@ class PluginConnectionManager implements PluginConnection {
     const healthy = await waitForHealthy(port);
     if (!healthy) {
       this.outputChannel.appendLine(`[connection] health check failed on port ${port}`);
+      if (this.currentPort === port) {
+        this.currentPort = undefined;
+      }
       return undefined;
     }
 
     this.currentPort = port;
+    this.lastHealthyPort = port;
+    this.lastHealthCheckAt = Date.now();
     return port;
+  }
+
+  private async isPortHealthy(port: number, reason: string) {
+    const now = Date.now();
+    if (this.lastHealthyPort === port && now - this.lastHealthCheckAt < ReuseHealthTtlMs) {
+      return true;
+    }
+
+    const healthy = await waitForHealthy(port, 1);
+    if (healthy) {
+      this.lastHealthyPort = port;
+      this.lastHealthCheckAt = now;
+      return true;
+    }
+
+    this.outputChannel.appendLine(`[connection] existing port ${port} is unhealthy (${reason})`);
+    if (this.currentPort === port) {
+      this.currentPort = undefined;
+    }
+    return false;
+  }
+
+  private probeForSupportedDocument(document: vscode.TextDocument | undefined, reason: string) {
+    if (!document || !selectors.includes(document.languageId)) {
+      return;
+    }
+
+    void this.ensureConnected(reason);
   }
 }
 
@@ -161,8 +216,8 @@ function buildPortCandidates(defaultPort: number, excludedPort?: number) {
   return candidates;
 }
 
-async function waitForHealthy(port: number) {
-  for (let attempt = 0; attempt < HealthRetryCount; attempt += 1) {
+async function waitForHealthy(port: number, retryCount = HealthRetryCount) {
+  for (let attempt = 0; attempt < retryCount; attempt += 1) {
     try {
       const response = await axios.get<PluginHealthResponse>(`http://127.0.0.1:${port}/health`, {
         timeout: HealthCheckTimeoutMs,
@@ -175,7 +230,9 @@ async function waitForHealthy(port: number) {
       // noop
     }
 
-    await delay(HealthRetryDelayMs);
+    if (attempt + 1 < retryCount) {
+      await delay(HealthRetryDelayMs);
+    }
   }
 
   return false;

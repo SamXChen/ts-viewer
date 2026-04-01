@@ -3,22 +3,15 @@ import * as vscode from 'vscode';
 import { getType } from './api';
 import { selectors } from './constants';
 import type { PluginConnection } from './connection';
+import { createTypeInfoPayload, toViewRequest, type TypeInfoPayload } from './type-info';
 import { getViewService } from './webview';
 import { getExpandTypeScriptService } from './helper';
 
 const ViewAtCursorCommandName = 'ts-viewer.view-at-cursor';
 const HoverCacheTtlMs = 1000;
 const MaxHoverCacheSize = 64;
-const PreviewMaxLines = 8;
-const PreviewMaxChars = 600;
 
 const outputChannel = vscode.window.createOutputChannel('TS Viewer');
-
-interface TypeInfoPayload {
-  preview: string;
-  text: string;
-  title: string;
-}
 
 export class HoverProvider implements vscode.HoverProvider {
   private readonly cache = new Map<string, { expiresAt: number; value: TypeInfoPayload | null }>();
@@ -142,13 +135,7 @@ async function resolveTypeInfo(
   }
 
   const symbolName = getSymbolName(document, range);
-  const validTypeString = ensureTypeStringValid(typeString, symbolName);
-
-  return {
-    preview: createPreview(validTypeString),
-    text: validTypeString,
-    title: `ts-viewer.full-type.${symbolName}.d.ts`,
-  } satisfies TypeInfoPayload;
+  return createTypeInfoPayload(typeString, symbolName);
 }
 
 function getCacheKey(document: vscode.TextDocument, position: vscode.Position) {
@@ -159,47 +146,4 @@ function getSymbolName(document: vscode.TextDocument, range: vscode.Range | unde
   const currentWord = range ? document.getText(range).trim() : '';
   const fallbackWord = currentWord || 'TypeInfo';
   return fallbackWord.replace(/^\w/, (char) => char.toUpperCase());
-}
-
-function createPreview(typeString: string) {
-  const lines = typeString.split('\n');
-  const preview = lines.slice(0, PreviewMaxLines).join('\n');
-  const maybeTruncatedLines = lines.length > PreviewMaxLines ? `${preview}\n...` : preview;
-
-  if (maybeTruncatedLines.length <= PreviewMaxChars) {
-    return maybeTruncatedLines;
-  }
-
-  return `${maybeTruncatedLines.slice(0, PreviewMaxChars - 3)}...`;
-}
-
-function toViewRequest(typeInfo: TypeInfoPayload) {
-  return {
-    title: typeInfo.title,
-    text: typeInfo.text,
-    language: 'typescript',
-    commandList: ['editor.action.formatDocument'],
-  };
-}
-
-function ensureTypeStringValid(input: string, currentWord: string): string {
-  if (!input) {
-    return '';
-  }
-  if (input.startsWith('type')) {
-    return input;
-  }
-  if (input.startsWith('interface')) {
-    return input;
-  }
-  if (input.startsWith('enum')) {
-    return input;
-  }
-  if (input.startsWith('declare')) {
-    return input;
-  }
-  if (input.startsWith('export')) {
-    return input;
-  }
-  return `type ${currentWord} = ${input}`;
 }

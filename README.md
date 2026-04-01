@@ -18,3 +18,10 @@ There are two packages in this project:
 
 - After getting entire information of a TypeScript Interface or Type, you can easily mock the data for it by using AI-assisted mock data generator.
 ![mock-data](./docs/images/mock-data.gif)
+
+## Smoke Fixtures
+
+- Minimal smoke fixtures now live under `tests/fixtures` for TypeScript, JavaScript, TSX, and Vue workspaces.
+- Run `pnpm validate:fixtures` to verify the fixture set still matches the extension activation and connection-layer expectations.
+- The fixture pipeline now includes compiler-driven usage smoke tests, so `pnpm validate:fixtures` checks real type resolution for the TS, JS, TSX, and Vue scenarios.
+- The fixture pipeline also checks hover-preview shaping and full-view request payloads for the current interaction model.
