@@ -6,6 +6,7 @@ import { assert, fixturesRoot, readJson, repoRoot } from './lib/fixture-smoke';
 import {
   pluginSourceRoot,
   pluginUtilitySourcePaths,
+  pluginVueSourcePaths,
   serviceSourcePath,
   vueSourcePath,
 } from './lib/plugin-runtime';
@@ -86,7 +87,7 @@ async function main() {
 async function loadServiceModule() {
   return requireTranspiledModuleGraph<ServiceModule>({
     entrySourcePath: serviceSourcePath,
-    sourcePaths: [serviceSourcePath, vueSourcePath, ...pluginUtilitySourcePaths],
+    sourcePaths: [serviceSourcePath, ...pluginVueSourcePaths, ...pluginUtilitySourcePaths],
     sourceRoot: pluginSourceRoot,
     tempRoot: path.join(repoRoot, 'packages', 'plugin', '.tmp'),
   });

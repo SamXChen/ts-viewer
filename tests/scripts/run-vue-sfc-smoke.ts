@@ -2,13 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { assert, fixturesRoot, readJson, repoRoot } from './lib/fixture-smoke';
-import { pluginSourceRoot, pluginUtilitySourcePaths, vueSourcePath } from './lib/plugin-runtime';
+import { pluginSourceRoot, pluginUtilitySourcePaths, pluginVueSourcePaths, vueSourcePath } from './lib/plugin-runtime';
 import { requireTranspiledModuleGraph } from './lib/transpile-module';
 
 interface VueScenario {
   expectedIncludes: string[];
   file: string;
   name: string;
+  positionOffset?: number;
   searchText: string;
 }
 
@@ -32,10 +33,11 @@ async function main() {
     const sourceText = fs.readFileSync(filePath, 'utf8');
     const searchIndex = sourceText.indexOf(scenario.searchText);
     assert(searchIndex >= 0, `Unable to find search text for scenario ${scenario.name}`);
+    const requestPosition = searchIndex + (scenario.positionOffset ?? 0);
 
     const typeText = vueMappingModule.resolveVueTypeInfo(program, {
       fileName: filePath,
-      position: searchIndex,
+      position: requestPosition,
     });
 
     for (const expectedText of scenario.expectedIncludes) {
@@ -52,7 +54,7 @@ async function main() {
 async function loadVueMappingModule() {
   return requireTranspiledModuleGraph<VueMappingModule>({
     entrySourcePath: vueSourcePath,
-    sourcePaths: [vueSourcePath, ...pluginUtilitySourcePaths],
+    sourcePaths: [...pluginVueSourcePaths, ...pluginUtilitySourcePaths],
     sourceRoot: pluginSourceRoot,
     tempRoot: path.join(repoRoot, 'packages', 'plugin', '.tmp'),
   });

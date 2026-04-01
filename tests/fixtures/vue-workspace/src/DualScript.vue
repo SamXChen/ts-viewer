@@ -18,5 +18,5 @@ type SavePayload = Parameters<typeof emit>[1];
 </script>
 
 <template>
-  <section>{{ props.profile.id }}</section>
+  <section :data-primary-role="props.profile.roles[0]">{{ props.profile.id }}</section>
 </template>

@@ -7,7 +7,7 @@ import {
   readText,
   repoRoot,
 } from './lib/fixture-smoke';
-import { serviceSourcePath, vueSourcePath } from './lib/plugin-runtime';
+import { pluginVueSourcePaths, serviceSourcePath } from './lib/plugin-runtime';
 
 interface ExpectedFixture {
   files: string[];
@@ -34,6 +34,7 @@ interface VueScenarioShape {
   expectedIncludes?: string[];
   file?: string;
   name?: string;
+  positionOffset?: number;
   searchText?: string;
   symbolName?: string;
 }
@@ -55,7 +56,7 @@ const interactionScenariosPath = path.join(fixturesRoot, 'interaction-scenarios.
 const vueScenariosPath = path.join(fixturesRoot, 'vue-sfc-scenarios.json');
 const stabilityScenariosPath = path.join(fixturesRoot, 'stability-scenarios.json');
 const typeInfoPath = path.join(repoRoot, 'packages', 'extension', 'src', 'type-info.ts');
-const vueMappingPath = vueSourcePath;
+const vueMappingPaths = pluginVueSourcePaths;
 
 const expectedFixtures: ExpectedFixture[] = [
   {
@@ -88,7 +89,7 @@ function main() {
   const connectionSource = readText(connectionPath);
   const serviceSource = readText(servicePath);
   const typeInfoSource = readText(typeInfoPath);
-  const vueMappingSource = readText(vueMappingPath);
+  const vueMappingSource = vueMappingPaths.map((filePath) => readText(filePath)).join('\n');
 
   validateManifest(manifest);
   validateSelectors(selectorsSource);
@@ -237,6 +238,10 @@ function validateVueScenarios() {
     assert(typeof scenario.name === 'string', 'Vue SFC scenario is missing a name');
     assert(typeof scenario.file === 'string', `Vue SFC scenario ${scenario.name} is missing a file`);
     assert(typeof scenario.searchText === 'string', `Vue SFC scenario ${scenario.name} is missing searchText`);
+    assert(
+      scenario.positionOffset === undefined || typeof scenario.positionOffset === 'number',
+      `Vue SFC scenario ${scenario.name} must define numeric positionOffset when provided`,
+    );
     assert(typeof scenario.symbolName === 'string', `Vue SFC scenario ${scenario.name} is missing symbolName`);
     assert(
       Array.isArray(scenario.expectedIncludes) && scenario.expectedIncludes.length > 0,
