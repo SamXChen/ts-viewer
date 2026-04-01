@@ -23,20 +23,21 @@ export class HoverProvider implements vscode.HoverProvider {
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Hover | null | undefined> {
+    if (shouldSkipHoverDocument(document)) {
+      return;
+    }
+
     const range = document.getWordRangeAtPosition(position);
     const typeInfo = await this.resolveTypeInfo(document, position, range, token);
     if (token.isCancellationRequested || !typeInfo) {
       return;
     }
 
-    const preview = new vscode.MarkdownString();
-    preview.appendCodeblock(typeInfo.preview, 'typescript');
-
     const link = getViewService().genViewLink('View Full Type', toViewRequest(typeInfo));
 
     const expandTypeScriptLink = getExpandTypeScriptService().getExpandTypeScriptLink();
 
-    return new vscode.Hover([preview, link, expandTypeScriptLink], range);
+    return new vscode.Hover([link, expandTypeScriptLink], range);
   }
 
   private async resolveTypeInfo(
@@ -140,6 +141,15 @@ async function resolveTypeInfo(
 
 function getCacheKey(document: vscode.TextDocument, position: vscode.Position) {
   return `${document.uri.toString()}:${document.version}:${document.offsetAt(position)}`;
+}
+
+function shouldSkipHoverDocument(document: vscode.TextDocument) {
+  if (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled') {
+    return true;
+  }
+
+  const normalizedResource = `${document.fileName}\n${document.uri.toString()}`.toLowerCase();
+  return normalizedResource.endsWith('.vue') || normalizedResource.includes('.vue.');
 }
 
 function getSymbolName(document: vscode.TextDocument, range: vscode.Range | undefined) {

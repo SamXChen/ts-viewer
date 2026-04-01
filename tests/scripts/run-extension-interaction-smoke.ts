@@ -7,7 +7,7 @@ import {
   repoRoot,
   runScenario,
 } from './lib/fixture-smoke';
-import { importInlineTranspiledModule } from './lib/transpile-module';
+import { requireTranspiledModuleGraph } from './lib/transpile-module';
 
 interface InteractionScenario {
   expectEllipsis: boolean;
@@ -36,13 +36,20 @@ interface TypeInfoModule {
 
 const interactionScenariosPath = path.join(fixturesRoot, 'interaction-scenarios.json');
 const typeInfoSourcePath = path.join(repoRoot, 'packages', 'extension', 'src', 'type-info.ts');
+const extensionSourceRoot = path.join(repoRoot, 'packages', 'extension', 'src');
+const extensionTempRoot = path.join(repoRoot, 'packages', 'extension', '.tmp');
 
 void main();
 
 async function main() {
   const usageScenarios = new Map(loadUsageScenarios().map((scenario) => [scenario.name, scenario]));
   const interactionScenarios = readJson<InteractionScenario[]>(interactionScenariosPath);
-  const typeInfoModule = await importInlineTranspiledModule<TypeInfoModule>(typeInfoSourcePath);
+  const typeInfoModule = await requireTranspiledModuleGraph<TypeInfoModule>({
+    entrySourcePath: typeInfoSourcePath,
+    sourcePaths: [typeInfoSourcePath],
+    sourceRoot: extensionSourceRoot,
+    tempRoot: extensionTempRoot,
+  });
 
   for (const scenario of interactionScenarios) {
     const usageScenario = usageScenarios.get(scenario.usageScenario);

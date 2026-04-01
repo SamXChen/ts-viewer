@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { createPluginConnection } from './connection';
-import { selectors } from './constants';
+import { hoverSelectors } from './constants';
 
 import { getTypeInfoOutputChannel, getViewAtCursorService, HoverProvider } from './code';
 import { getViewService } from './webview';
@@ -18,7 +18,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(getTypeInfoOutputChannel());
 
   context.subscriptions.push(
-    vscode.languages.registerHoverProvider(selectors, new HoverProvider(connection)),
+    vscode.languages.registerHoverProvider(hoverSelectors, new HoverProvider(connection)),
   );
 
   const [ViewCommandName, ViewCommandImpl] = getViewService().command;

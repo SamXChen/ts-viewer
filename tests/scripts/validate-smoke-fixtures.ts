@@ -49,6 +49,8 @@ interface StabilityScenarioShape {
 
 const extensionManifestPath = path.join(repoRoot, 'packages', 'extension', 'package.json');
 const selectorsPath = path.join(repoRoot, 'packages', 'extension', 'src', 'constants.ts');
+const extensionIndexPath = path.join(repoRoot, 'packages', 'extension', 'src', 'index.ts');
+const codePath = path.join(repoRoot, 'packages', 'extension', 'src', 'code.ts');
 const connectionPath = path.join(repoRoot, 'packages', 'extension', 'src', 'connection.ts');
 const servicePath = serviceSourcePath;
 const scenariosPath = path.join(fixturesRoot, 'usage-scenarios.json');
@@ -86,6 +88,8 @@ main();
 function main() {
   const manifest = readJson<{ activationEvents?: string[] }>(extensionManifestPath);
   const selectorsSource = readText(selectorsPath);
+  const extensionIndexSource = readText(extensionIndexPath);
+  const codeSource = readText(codePath);
   const connectionSource = readText(connectionPath);
   const serviceSource = readText(servicePath);
   const typeInfoSource = readText(typeInfoPath);
@@ -93,6 +97,8 @@ function main() {
 
   validateManifest(manifest);
   validateSelectors(selectorsSource);
+  validateHoverRegistration(extensionIndexSource);
+  validateHoverGuard(codeSource);
   validateConnectionSource(connectionSource);
   validateServiceSource(serviceSource);
   validateTypeInfoSource(typeInfoSource);
@@ -126,6 +132,18 @@ function validateManifest(manifest: { activationEvents?: string[] }) {
 function validateSelectors(source: string) {
   for (const selector of ['typescript', 'typescriptreact', 'javascript', 'javascriptreact', 'vue']) {
     assert(source.includes(`'${selector}'`), `Missing selector: ${selector}`);
+  }
+
+  assert(source.includes('hoverSelectors'), 'Missing hoverSelectors export');
+}
+
+function validateHoverRegistration(source: string) {
+  assert(source.includes('registerHoverProvider(hoverSelectors'), 'Hover provider should use hoverSelectors');
+}
+
+function validateHoverGuard(source: string) {
+  for (const snippet of ['shouldSkipHoverDocument', "document.uri.scheme !== 'file'", "document.uri.scheme !== 'untitled'", "includes('.vue.')"]) {
+    assert(source.includes(snippet), `Hover guard missing snippet: ${snippet}`);
   }
 }
 

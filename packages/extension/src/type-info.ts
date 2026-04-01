@@ -1,10 +1,12 @@
+import prettier from 'prettier';
+
 export interface TypeInfoPayload {
   preview: string;
   text: string;
   title: string;
 }
 
-const PreviewMaxLines = 8;
+const PreviewMaxLines = 4;
 const PreviewMaxChars = 600;
 const Ellipsis = '...';
 const EllipsisLength = Ellipsis.length;
@@ -13,16 +15,17 @@ const FormatDocumentCommand = 'editor.action.formatDocument';
 
 export function createTypeInfoPayload(typeString: string, symbolName: string): TypeInfoPayload {
   const validTypeString = ensureTypeStringValid(typeString, symbolName);
+  const formattedTypeString = formatTypeString(validTypeString);
 
   return {
-    preview: createPreview(validTypeString),
-    text: validTypeString,
+    preview: createPreview(formattedTypeString),
+    text: formattedTypeString,
     title: `ts-viewer.full-type.${symbolName}.d.ts`,
   };
 }
 
 export function createPreview(typeString: string) {
-  const lines = typeString.split('\n');
+  const lines = typeString.trimEnd().split('\n');
   const preview = lines.slice(0, PreviewMaxLines).join('\n');
   const maybeTruncatedLines = lines.length > PreviewMaxLines ? `${preview}\n${Ellipsis}` : preview;
 
@@ -40,6 +43,16 @@ export function toViewRequest(typeInfo: TypeInfoPayload) {
     language: ViewLanguage,
     commandList: [FormatDocumentCommand],
   };
+}
+
+function formatTypeString(typeString: string) {
+  try {
+    return prettier.format(typeString, {
+      parser: 'typescript',
+    });
+  } catch {
+    return typeString;
+  }
 }
 
 export function ensureTypeStringValid(input: string, currentWord: string): string {

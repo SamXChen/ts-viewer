@@ -5,7 +5,7 @@
     "symbolName": "ExpandedUser",
     "expectedPreviewIncludes": [
       "type ExpandedUser = {",
-      "preferences: Record<string, { enabled: boolean; label: string; }>"
+      "preferences: Record<string, { enabled: boolean; label: string }>;"
     ],
     "expectEllipsis": false,
     "expectedTitle": "ts-viewer.full-type.ExpandedUser.d.ts"
@@ -16,8 +16,7 @@
     "symbolName": "ExpandedAuditTrail",
     "expectedPreviewIncludes": [
       "type ExpandedAuditTrail = {",
-      "events: {",
-      "..."
+      "createdAt: string;"
     ],
     "expectEllipsis": true,
     "expectedTitle": "ts-viewer.full-type.ExpandedAuditTrail.d.ts"
@@ -27,8 +26,7 @@
     "usageScenario": "vue-script-setup-user-profile",
     "symbolName": "UserProfile",
     "expectedPreviewIncludes": [
-      "type UserProfile = {",
-      "roles: string[];"
+      "type UserProfile = { id: string; roles: string[] };"
     ],
     "expectEllipsis": false,
     "expectedTitle": "ts-viewer.full-type.UserProfile.d.ts"
