@@ -1,4 +1,4 @@
-import { assert, loadUsageScenarios, runScenario } from './lib/fixture-smoke.mjs';
+import { assert, loadUsageScenarios, runScenario } from './lib/fixture-smoke';
 
 main();
 

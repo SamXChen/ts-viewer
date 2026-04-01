@@ -1,0 +1,21 @@
+[
+  {
+    "name": "typescript-restart-expanded-user",
+    "fixture": "typescript-workspace",
+    "file": "src/index.ts",
+    "searchText": "ExpandedUser",
+    "expectedIncludes": [
+      "profile: {",
+      "preferences: Record<string, { enabled: boolean; label: string; }>"
+    ]
+  },
+  {
+    "name": "vue-restart-script-account",
+    "fixture": "vue-workspace",
+    "file": "src/DualScript.vue",
+    "searchText": "ScriptAccount",
+    "expectedIncludes": [
+      "Account"
+    ]
+  }
+]

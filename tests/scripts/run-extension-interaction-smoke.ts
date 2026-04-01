@@ -1,6 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-import ts from 'typescript';
+import path from 'node:path';
 import {
   assert,
   fixturesRoot,
@@ -8,17 +6,43 @@ import {
   readJson,
   repoRoot,
   runScenario,
-} from './lib/fixture-smoke.mjs';
+} from './lib/fixture-smoke';
+import { importInlineTranspiledModule } from './lib/transpile-module';
+
+interface InteractionScenario {
+  expectEllipsis: boolean;
+  expectedPreviewIncludes: string[];
+  expectedTitle: string;
+  name: string;
+  symbolName: string;
+  usageScenario: string;
+}
+
+interface TypeInfoPayload {
+  preview: string;
+  text: string;
+  title: string;
+}
+
+interface TypeInfoModule {
+  createTypeInfoPayload(typeString: string, symbolName: string): TypeInfoPayload;
+  toViewRequest(payload: TypeInfoPayload): {
+    commandList: string[];
+    language: string;
+    text: string;
+    title: string;
+  };
+}
 
 const interactionScenariosPath = path.join(fixturesRoot, 'interaction-scenarios.json');
 const typeInfoSourcePath = path.join(repoRoot, 'packages', 'extension', 'src', 'type-info.ts');
 
-await main();
+void main();
 
 async function main() {
   const usageScenarios = new Map(loadUsageScenarios().map((scenario) => [scenario.name, scenario]));
-  const interactionScenarios = readJson(interactionScenariosPath);
-  const typeInfoModule = await loadTypeInfoModule();
+  const interactionScenarios = readJson<InteractionScenario[]>(interactionScenariosPath);
+  const typeInfoModule = await importInlineTranspiledModule<TypeInfoModule>(typeInfoSourcePath);
 
   for (const scenario of interactionScenarios) {
     const usageScenario = usageScenarios.get(scenario.usageScenario);
@@ -55,18 +79,4 @@ async function main() {
   }
 
   console.log(`Extension interaction smoke passed for ${interactionScenarios.length} scenario(s).`);
-}
-
-async function loadTypeInfoModule() {
-  const source = fs.readFileSync(typeInfoSourcePath, 'utf8');
-  const transpiled = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.ES2020,
-      target: ts.ScriptTarget.ES2020,
-    },
-    fileName: typeInfoSourcePath,
-  }).outputText;
-
-  const encodedModule = Buffer.from(transpiled, 'utf8').toString('base64');
-  return import(`data:text/javascript;base64,${encodedModule}`);
 }

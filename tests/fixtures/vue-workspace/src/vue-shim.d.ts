@@ -4,3 +4,4 @@ declare module '*.vue' {
 }
 
 declare function defineProps<T>(): T;
+declare function defineEmits<T>(): T;

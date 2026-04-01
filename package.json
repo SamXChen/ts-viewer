@@ -7,10 +7,12 @@
   "scripts": {
     "build": "turbo run build",
     "validate:fixtures": "pnpm validate:fixtures:static && pnpm test:fixtures",
-    "validate:fixtures:static": "node ./scripts/validate-smoke-fixtures.mjs",
-    "test:fixtures": "pnpm test:fixtures:usage && pnpm test:fixtures:interaction",
-    "test:fixtures:usage": "node ./scripts/run-fixture-usage-smoke.mjs",
-    "test:fixtures:interaction": "node ./scripts/run-extension-interaction-smoke.mjs",
+    "validate:fixtures:static": "tsx ./tests/scripts/validate-smoke-fixtures.ts",
+    "test:fixtures": "pnpm test:fixtures:usage && pnpm test:fixtures:interaction && pnpm test:fixtures:vue && pnpm test:fixtures:stability",
+    "test:fixtures:usage": "tsx ./tests/scripts/run-fixture-usage-smoke.ts",
+    "test:fixtures:interaction": "tsx ./tests/scripts/run-extension-interaction-smoke.ts",
+    "test:fixtures:vue": "tsx ./tests/scripts/run-vue-sfc-smoke.ts",
+    "test:fixtures:stability": "tsx ./tests/scripts/run-service-stability-smoke.ts",
     "prerelease": "lerna version --no-private",
     "release": "lerna publish from-package --yes --no-private"
   },
@@ -29,6 +31,7 @@
     "lerna": "6.6.1",
     "prettier": "2.7.1",
     "turbo": "1.10.14",
+    "tsx": "4.19.2",
     "typescript": "5.2.2"
   }
 }
