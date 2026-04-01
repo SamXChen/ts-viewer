@@ -7,8 +7,7 @@ import {
 } from '@ts-viewer/shared';
 import axios from 'axios';
 import getPort from 'get-port';
-import { selectors } from './constants';
-import { pluginId, typeScriptExtensionId } from './constants';
+import { pluginId, probeSelectors, typeScriptExtensionId } from './constants';
 import * as vscode from 'vscode';
 
 declare class ApiV0 {
@@ -50,7 +49,6 @@ export async function createPluginConnection(defaultPort: number) {
   }
 
   const connection = new PluginConnectionManager(api, defaultPort);
-  void connection.ensureConnected('activate');
   return connection;
 }
 
@@ -196,7 +194,7 @@ class PluginConnectionManager implements PluginConnection {
   }
 
   private probeForSupportedDocument(document: vscode.TextDocument | undefined, reason: string) {
-    if (!document || !selectors.includes(document.languageId)) {
+    if (!document || !probeSelectors.includes(document.languageId)) {
       return;
     }
 

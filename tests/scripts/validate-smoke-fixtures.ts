@@ -135,6 +135,7 @@ function validateSelectors(source: string) {
   }
 
   assert(source.includes('hoverSelectors'), 'Missing hoverSelectors export');
+  assert(source.includes('probeSelectors'), 'Missing probeSelectors export');
 }
 
 function validateHoverRegistration(source: string) {
@@ -154,9 +155,12 @@ function validateConnectionSource(source: string) {
     'workspace folders changed',
     'supported document opened',
     'existing port',
+    'probeSelectors.includes',
   ]) {
     assert(source.includes(snippet), `Connection smoke guard missing snippet: ${snippet}`);
   }
+
+  assert(!source.includes("ensureConnected('activate')"), 'Connection should be lazy and not auto-connect on activate');
 }
 
 function validateServiceSource(source: string) {

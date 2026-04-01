@@ -87,6 +87,9 @@ importers:
       esno:
         specifier: 0.17.0
         version: 0.17.0
+      prettier:
+        specifier: 2.7.1
+        version: 2.7.1
       typescript:
         specifier: 5.2.2
         version: 5.2.2

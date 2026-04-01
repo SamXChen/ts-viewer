@@ -33,11 +33,12 @@ export class HoverProvider implements vscode.HoverProvider {
       return;
     }
 
+    const label = new vscode.MarkdownString('TS Viewer');
     const link = getViewService().genViewLink('View Full Type', toViewRequest(typeInfo));
 
     const expandTypeScriptLink = getExpandTypeScriptService().getExpandTypeScriptLink();
 
-    return new vscode.Hover([link, expandTypeScriptLink], range);
+    return new vscode.Hover([label, link, expandTypeScriptLink], range);
   }
 
   private async resolveTypeInfo(
