@@ -13,14 +13,18 @@ const factory: server.PluginModuleFactory = () => {
 
       setCreatedInfo(info);
 
-      startListen(info.config.port!);
+      if (typeof info.config.port === 'number') {
+        void startListen(info.config.port);
+      }
 
       return {
         ...info.languageService,
       };
     },
     onConfigurationChanged(config: Partial<PluginConfig>) {
-      restartListen(config.port!);
+      if (typeof config.port === 'number') {
+        void restartListen(config.port);
+      }
     },
   };
 };

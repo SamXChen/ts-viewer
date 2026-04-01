@@ -1,28 +1,33 @@
 import * as vscode from 'vscode';
-import { getPluginConfig } from './connection';
+import { createPluginConnection } from './connection';
 import { selectors } from './constants';
 
-import { HoverProvider } from './code';
+import { getTypeInfoOutputChannel, getViewAtCursorService, HoverProvider } from './code';
 import { getViewService } from './webview';
 import { getExpandTypeScriptService } from './helper';
-import { installDependencies } from './dependency';
 
 const DefaultPort = 3200;
 
 export async function activate(context: vscode.ExtensionContext) {
-  const { port } = (await getPluginConfig(DefaultPort)) ?? {};
-  if (!port) {
+  const connection = await createPluginConnection(DefaultPort);
+  if (!connection) {
     return;
   }
 
-  installDependencies(context);
+  context.subscriptions.push(connection);
+  context.subscriptions.push(getTypeInfoOutputChannel());
 
   context.subscriptions.push(
-    vscode.languages.registerHoverProvider(selectors, new HoverProvider(context, port)),
+    vscode.languages.registerHoverProvider(selectors, new HoverProvider(connection)),
   );
 
   const [ViewCommandName, ViewCommandImpl] = getViewService().command;
   context.subscriptions.push(vscode.commands.registerCommand(ViewCommandName, ViewCommandImpl));
+
+  const [ViewAtCursorCommandName, ViewAtCursorCommandImpl] = getViewAtCursorService(connection).command;
+  context.subscriptions.push(
+    vscode.commands.registerCommand(ViewAtCursorCommandName, ViewAtCursorCommandImpl),
+  );
 
   const [DocumentProviderName, DocumentProviderImpl] = getViewService().documentProvider;
   context.subscriptions.push(
