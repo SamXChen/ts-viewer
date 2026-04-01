@@ -23,6 +23,7 @@ const HealthRetryCount = 8;
 const HealthRetryDelayMs = 150;
 const ReuseHealthTtlMs = 5000;
 const PortCandidateRange = 20;
+const ProbeDebounceMs = 500;
 
 export interface PluginConnection extends vscode.Disposable {
   getPort(): number | undefined;
@@ -84,6 +85,7 @@ class PluginConnectionManager implements PluginConnection {
   private isDisposed = false;
   private lastHealthyPort: number | undefined;
   private lastHealthCheckAt = 0;
+  private probeTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly api: ApiV0,
@@ -125,6 +127,10 @@ class PluginConnectionManager implements PluginConnection {
 
   dispose() {
     this.isDisposed = true;
+    if (this.probeTimer !== undefined) {
+      clearTimeout(this.probeTimer);
+      this.probeTimer = undefined;
+    }
     for (const subscription of this.subscriptions) {
       subscription.dispose();
     }
@@ -225,7 +231,14 @@ class PluginConnectionManager implements PluginConnection {
       return;
     }
 
-    void this.ensureConnected(reason);
+    if (this.probeTimer !== undefined) {
+      clearTimeout(this.probeTimer);
+    }
+
+    this.probeTimer = setTimeout(() => {
+      this.probeTimer = undefined;
+      void this.ensureConnected(reason);
+    }, ProbeDebounceMs);
   }
 }
 

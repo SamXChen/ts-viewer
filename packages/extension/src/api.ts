@@ -50,10 +50,19 @@ export async function getType(
       }
 
       if (shouldRecover(error)) {
+        if (abortController.signal.aborted) {
+          return undefined;
+        }
+
         const recoveredPort = await connection.recover(
           `get-type request failed: ${getErrorMessage(error)}`,
         );
-        if (recoveredPort && !abortController.signal.aborted) {
+
+        if (abortController.signal.aborted) {
+          return undefined;
+        }
+
+        if (recoveredPort) {
           try {
             return await requestTypeInfo(req, recoveredPort, abortController.signal);
           } catch (retryError) {

@@ -1,5 +1,6 @@
 dist/
 node_modules/
+.tmp/
 .agent/
 .turbo/
 .DS_Store

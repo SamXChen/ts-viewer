@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { assert, fixturesRoot, readJson, readText, repoRoot } from './lib/fixture-smoke';
-import { serviceSourcePath } from './lib/plugin-runtime';
+import { pluginSourceRoot, serviceSourcePath } from './lib/plugin-runtime';
 
 interface ExpectedFixture {
   files: string[];
@@ -42,6 +42,8 @@ const scenariosPath = path.join(fixturesRoot, 'usage-scenarios.json');
 const interactionScenariosPath = path.join(fixturesRoot, 'interaction-scenarios.json');
 const stabilityScenariosPath = path.join(fixturesRoot, 'stability-scenarios.json');
 const typeInfoPath = path.join(repoRoot, 'packages', 'extension', 'src', 'type-info.ts');
+const syntaxPath = path.join(pluginSourceRoot, 'utils', 'syntax.ts');
+const vuePluginPath = path.join(pluginSourceRoot, 'vue', 'index.ts');
 
 const expectedFixtures: ExpectedFixture[] = [
   {
@@ -71,6 +73,8 @@ function main() {
   const connectionSource = readText(connectionPath);
   const serviceSource = readText(servicePath);
   const typeInfoSource = readText(typeInfoPath);
+  const syntaxSource = readText(syntaxPath);
+  const vuePluginSource = readText(vuePluginPath);
 
   validateManifest(manifest);
   validateSelectors(selectorsSource);
@@ -79,6 +83,8 @@ function main() {
   validateConnectionSource(connectionSource);
   validateServiceSource(serviceSource);
   validateTypeInfoSource(typeInfoSource);
+  validateSyntaxSource(syntaxSource);
+  validateVuePluginSource(vuePluginSource);
   validateStabilityHooks(serviceSource);
   validateFixtures();
   validateUsageScenarios();
@@ -137,6 +143,8 @@ function validateConnectionSource(source: string) {
     'supported document opened',
     'existing port',
     'probeSelectors.includes',
+    'ProbeDebounceMs',
+    'probeTimer',
   ]) {
     assert(source.includes(snippet), `Connection smoke guard missing snippet: ${snippet}`);
   }
@@ -153,12 +161,22 @@ function validateServiceSource(source: string) {
     'PluginGetTypeRoutePath',
     'PluginLoopbackHost',
     'pruneCreatedInfoMap',
-    'getDirectSourceFileMatch',
+    'throttledPrune',
     'normalizeFsPath',
     'clearTypeInfoCache',
   ]) {
     assert(source.includes(snippet), `Plugin service smoke guard missing snippet: ${snippet}`);
   }
+
+  assert(
+    !source.includes('ts.sys.readFile'),
+    'Plugin service should not use synchronous ts.sys.readFile in cache key generation',
+  );
+
+  assert(
+    source.includes('[TS-Viewer][Error]'),
+    'Plugin service catch block should log errors to TS Server logger',
+  );
 }
 
 function validateTypeInfoSource(source: string) {
@@ -281,4 +299,28 @@ function validateStabilityScenarios() {
 
 function readablePathExists(targetPath: string) {
   return fs.existsSync(targetPath);
+}
+
+function validateSyntaxSource(source: string) {
+  assert(source.includes('findNode'), 'Syntax module must export findNode');
+  assert(
+    source.includes('return true') || source.includes('return childMatch ? true : undefined'),
+    'findNode should return truthy from forEachChild callback to enable early termination',
+  );
+}
+
+function validateVuePluginSource(source: string) {
+  for (const snippet of [
+    'resolveVueTypeInfo',
+    'getDefinitionAtPosition',
+    'extractTypeFromDisplayParts',
+  ]) {
+    assert(source.includes(snippet), `Vue plugin module missing snippet: ${snippet}`);
+  }
+
+  const checkerCallCount = (source.match(/program\.getTypeChecker\(\)/g) ?? []).length;
+  assert(
+    checkerCallCount <= 1,
+    `Vue plugin should call getTypeChecker() at most once, found ${checkerCallCount} calls`,
+  );
 }

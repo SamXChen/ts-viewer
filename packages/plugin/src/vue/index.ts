@@ -19,6 +19,8 @@ export function resolveVueTypeInfo(
     throw new Error('program not found');
   }
 
+  const checker = program.getTypeChecker();
+
   const definitions = languageService.getDefinitionAtPosition(request.fileName, request.position);
   logger.info(`[TS-Viewer][Vue-Definitions] count=${definitions?.length ?? 0}`);
 
@@ -34,7 +36,6 @@ export function resolveVueTypeInfo(
         continue;
       }
 
-      const checker = program.getTypeChecker();
       const type = checker.getTypeAtLocation(defNode);
       const typeText = checker.typeToString(type, undefined, TypeFormatFlags);
       if (typeText && typeText !== 'any') {
@@ -48,7 +49,6 @@ export function resolveVueTypeInfo(
   if (sourceFile) {
     const node = findNode(sourceFile, request.position);
     if (node) {
-      const checker = program.getTypeChecker();
       const type = checker.getTypeAtLocation(node);
       const typeText = checker.typeToString(type, undefined, TypeFormatFlags);
       if (typeText && typeText !== 'any') {

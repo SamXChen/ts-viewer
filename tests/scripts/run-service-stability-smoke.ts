@@ -6,6 +6,7 @@ import { assert, fixturesRoot, readJson, repoRoot } from './lib/fixture-smoke';
 import {
   pluginSourceRoot,
   pluginUtilitySourcePaths,
+  pluginVueSourcePaths,
   serviceSourcePath,
 } from './lib/plugin-runtime';
 import { requireTranspiledModuleGraph } from './lib/transpile-module';
@@ -93,7 +94,7 @@ async function main() {
 async function loadServiceModule() {
   return requireTranspiledModuleGraph<ServiceModule>({
     entrySourcePath: serviceSourcePath,
-    sourcePaths: [serviceSourcePath, ...pluginUtilitySourcePaths],
+    sourcePaths: [serviceSourcePath, ...pluginVueSourcePaths, ...pluginUtilitySourcePaths],
     sourceRoot: pluginSourceRoot,
     tempRoot: path.join(repoRoot, 'packages', 'plugin', '.tmp'),
   });

@@ -39,27 +39,49 @@ export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
   info.project.projectService.logger.info(
     `[TS-Viewer][Create-Info][Current-Directory] ${currentDir}`,
   );
+  pruneCreatedInfoMap();
   createdInfoMap.set(currentDir, info);
 }
 
-function getMatchedInfo(fileName: string) {
-  pruneCreatedInfoMap();
+const PruneIntervalMs = 5000;
+let lastPruneAt = 0;
 
-  const directMatch = getDirectSourceFileMatch(fileName);
-  if (directMatch) {
-    return directMatch;
+function throttledPrune() {
+  const now = Date.now();
+  if (now - lastPruneAt < PruneIntervalMs) {
+    return;
   }
+  lastPruneAt = now;
+  pruneCreatedInfoMap();
+}
+
+function getMatchedInfo(fileName: string) {
+  throttledPrune();
 
   const normalizedFileName = normalizeFsPath(fileName);
-  let result: tsServer.PluginCreateInfo | undefined;
-  let lastMatchedLength = 0;
+  let directMatch: tsServer.PluginCreateInfo | undefined;
+  let directMatchLength = 0;
+  let pathMatch: tsServer.PluginCreateInfo | undefined;
+  let pathMatchLength = 0;
 
-  for (const [key, value] of createdInfoMap.entries()) {
-    if (isPathInside(normalizedFileName, key) && key.length > lastMatchedLength) {
-      result = value;
-      lastMatchedLength = key.length;
+  for (const [key, info] of createdInfoMap.entries()) {
+    const program = info.languageService.getProgram();
+    if (!program) {
+      continue;
+    }
+
+    if (program.getSourceFile(fileName) && key.length > directMatchLength) {
+      directMatch = info;
+      directMatchLength = key.length;
+    }
+
+    if (isPathInside(normalizedFileName, key) && key.length > pathMatchLength) {
+      pathMatch = info;
+      pathMatchLength = key.length;
     }
   }
+
+  const result = directMatch ?? pathMatch;
   if (!result) {
     throw new Error('info not found');
   }
@@ -244,7 +266,14 @@ function createApp() {
 
         res.status(HttpStatusOk).json(createSuccessResponse(typeInfoString));
       } catch (err) {
-        console.error(err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        try {
+          const errorInfo = getMatchedInfo(req.body?.fileName ?? '');
+          errorInfo.project.projectService.logger.info(`[TS-Viewer][Error] ${errorMessage}`);
+        } catch {
+          // logger unavailable
+        }
+        console.error('[TS-Viewer]', err);
         res.status(HttpStatusOk).json(createErrorResponse(err));
       }
     },
@@ -289,9 +318,7 @@ function getTypeCacheKey(program: ts.Program, request: GetTypeRequest) {
   const sourceFile = program.getSourceFile(request.fileName);
   const sourceFileVersion =
     (sourceFile as { version?: string } | undefined)?.version ??
-    (sourceFile
-      ? String(sourceFile.text.length)
-      : String(ts.sys.readFile(request.fileName)?.length ?? 0));
+    (sourceFile ? String(sourceFile.text.length) : '0');
   return `${request.fileName}:${request.position}:${sourceFileVersion}`;
 }
 
@@ -314,23 +341,4 @@ function pruneCreatedInfoMap() {
       createdInfoMap.delete(key);
     }
   }
-}
-
-function getDirectSourceFileMatch(fileName: string) {
-  let result: tsServer.PluginCreateInfo | undefined;
-  let lastMatchedLength = 0;
-
-  for (const [key, info] of createdInfoMap.entries()) {
-    const program = info.languageService.getProgram();
-    if (!program?.getSourceFile(fileName)) {
-      continue;
-    }
-
-    if (key.length > lastMatchedLength) {
-      result = info;
-      lastMatchedLength = key.length;
-    }
-  }
-
-  return result;
 }

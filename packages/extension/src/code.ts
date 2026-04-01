@@ -84,6 +84,8 @@ export class HoverProvider implements vscode.HoverProvider {
       value,
     });
 
+    this.pruneExpiredEntries(now);
+
     while (this.cache.size > MaxHoverCacheSize) {
       const firstKey = this.cache.keys().next().value;
       if (!firstKey) {
@@ -93,6 +95,14 @@ export class HoverProvider implements vscode.HoverProvider {
     }
 
     return value;
+  }
+
+  private pruneExpiredEntries(now: number) {
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.expiresAt <= now) {
+        this.cache.delete(key);
+      }
+    }
   }
 }
 
