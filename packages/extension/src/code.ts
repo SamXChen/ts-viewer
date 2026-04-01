@@ -59,7 +59,13 @@ export class HoverProvider implements vscode.HoverProvider {
       this.cache.delete(cacheKey);
     }
 
-    const value = await resolveTypeInfo(document, position, range, this.connection, cancellationToken);
+    const value = await resolveTypeInfo(
+      document,
+      position,
+      range,
+      this.connection,
+      cancellationToken,
+    );
     if (cancellationToken?.isCancellationRequested) {
       return null;
     }
@@ -103,9 +109,16 @@ async function viewAtCursorImpl(connection: PluginConnection) {
   }
 
   const range = editor.document.getWordRangeAtPosition(editor.selection.active);
-  const typeInfo = await resolveTypeInfo(editor.document, editor.selection.active, range, connection);
+  const typeInfo = await resolveTypeInfo(
+    editor.document,
+    editor.selection.active,
+    range,
+    connection,
+  );
   if (!typeInfo) {
-    vscode.window.showInformationMessage('[TS Viewer] No type information was found at the cursor.');
+    vscode.window.showInformationMessage(
+      '[TS Viewer] No type information was found at the cursor.',
+    );
     return;
   }
 
@@ -145,12 +158,7 @@ function getCacheKey(document: vscode.TextDocument, position: vscode.Position) {
 }
 
 function shouldSkipHoverDocument(document: vscode.TextDocument) {
-  if (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled') {
-    return true;
-  }
-
-  const normalizedResource = `${document.fileName}\n${document.uri.toString()}`.toLowerCase();
-  return normalizedResource.endsWith('.vue') || normalizedResource.includes('.vue.');
+  return document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled';
 }
 
 function getSymbolName(document: vscode.TextDocument, range: vscode.Range | undefined) {

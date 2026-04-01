@@ -20,15 +20,5 @@
     ],
     "expectEllipsis": true,
     "expectedTitle": "ts-viewer.full-type.ExpandedAuditTrail.d.ts"
-  },
-  {
-    "name": "view-request-vue-user-profile",
-    "usageScenario": "vue-script-setup-user-profile",
-    "symbolName": "UserProfile",
-    "expectedPreviewIncludes": [
-      "type UserProfile = { id: string; roles: string[] };"
-    ],
-    "expectEllipsis": false,
-    "expectedTitle": "ts-viewer.full-type.UserProfile.d.ts"
   }
 ]

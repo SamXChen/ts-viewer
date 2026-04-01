@@ -46,17 +46,5 @@
       "actions: { id: string; label: string; }[];",
       "title: string;"
     ]
-  },
-  {
-    "name": "vue-script-setup-user-profile",
-    "kind": "vue-script-setup",
-    "fixture": "vue-workspace",
-    "tsconfig": "tsconfig.json",
-    "file": "src/App.vue",
-    "symbol": "UserProfile",
-    "expectedIncludes": [
-      "id: string;",
-      "roles: string[];"
-    ]
   }
 ]

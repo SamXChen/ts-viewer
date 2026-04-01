@@ -75,9 +75,18 @@ async function main() {
       payload.title === scenario.expectedTitle,
       `Interaction scenario ${scenario.name} title mismatch. Expected ${scenario.expectedTitle}, got ${payload.title}`,
     );
-    assert(viewRequest.title === payload.title, `Interaction scenario ${scenario.name} view title mismatch`);
-    assert(viewRequest.text === payload.text, `Interaction scenario ${scenario.name} view text mismatch`);
-    assert(viewRequest.language === 'typescript', `Interaction scenario ${scenario.name} view language mismatch`);
+    assert(
+      viewRequest.title === payload.title,
+      `Interaction scenario ${scenario.name} view title mismatch`,
+    );
+    assert(
+      viewRequest.text === payload.text,
+      `Interaction scenario ${scenario.name} view text mismatch`,
+    );
+    assert(
+      viewRequest.language === 'typescript',
+      `Interaction scenario ${scenario.name} view language mismatch`,
+    );
     assert(
       Array.isArray(viewRequest.commandList) &&
         viewRequest.commandList.includes('editor.action.formatDocument'),

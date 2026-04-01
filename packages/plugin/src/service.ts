@@ -17,7 +17,6 @@ import { ExpiringCache } from './utils/expiring-cache';
 import { normalizeFsPath, isPathInside } from './utils/path';
 import { findNode } from './utils/syntax';
 import { TypeFormatFlags } from './utils/type-format';
-import { resolveVueTypeInfo } from './vue';
 
 const createdInfoMap = new Map<string, tsServer.PluginCreateInfo>();
 
@@ -176,42 +175,38 @@ function createApp() {
     res.status(HttpStatusOk).json(createHealthResponse());
   });
 
-  app.post(PluginGetTypeRoutePath, (req: express.Request<unknown, GetTypeResponse, GetTypeRequest>, res) => {
-    try {
-      if (!isGetTypeRequest(req.body)) {
-        res.status(HttpStatusOk).json(createErrorResponse('Invalid request body'));
-        return;
-      }
+  app.post(
+    PluginGetTypeRoutePath,
+    (req: express.Request<unknown, GetTypeResponse, GetTypeRequest>, res) => {
+      try {
+        if (!isGetTypeRequest(req.body)) {
+          res.status(HttpStatusOk).json(createErrorResponse('Invalid request body'));
+          return;
+        }
 
-      const request = req.body;
-      const info = getMatchedInfo(request.fileName);
+        const request = req.body;
+        const info = getMatchedInfo(request.fileName);
 
-      const logger = info.project.projectService.logger;
+        const logger = info.project.projectService.logger;
 
-      logger.info(`[TS-Viewer][File-Name] ${request.fileName}, ${request.position}`);
+        logger.info(`[TS-Viewer][File-Name] ${request.fileName}, ${request.position}`);
 
-      const program = info.languageService.getProgram();
-      if (!program) {
-        throw new Error('program not found');
-      }
+        const program = info.languageService.getProgram();
+        if (!program) {
+          throw new Error('program not found');
+        }
 
-      const currentDirectory = program.getCurrentDirectory();
-      logger.info(`[TS-Viewer][Current-Directory] ${currentDirectory}`);
+        const currentDirectory = program.getCurrentDirectory();
+        logger.info(`[TS-Viewer][Current-Directory] ${currentDirectory}`);
 
-      const cacheKey = getTypeCacheKey(program, request);
-      const cachedTypeInfo = getCachedTypeInfo(cacheKey);
-      if (cachedTypeInfo) {
-        logger.info(`[TS-Viewer][Cache-Hit] ${request.fileName}, ${request.position}`);
-        res.status(HttpStatusOk).json(createSuccessResponse(cachedTypeInfo));
-        return;
-      }
+        const cacheKey = getTypeCacheKey(program, request);
+        const cachedTypeInfo = getCachedTypeInfo(cacheKey);
+        if (cachedTypeInfo) {
+          logger.info(`[TS-Viewer][Cache-Hit] ${request.fileName}, ${request.position}`);
+          res.status(HttpStatusOk).json(createSuccessResponse(cachedTypeInfo));
+          return;
+        }
 
-      let typeInfoString = '';
-
-      if (request.fileName.endsWith('.vue')) {
-        logger.info(`[TS-Viewer][Vue-SFC] ${request.fileName}`);
-        typeInfoString = resolveVueTypeInfo(program, request);
-      } else {
         const typeChecker = program.getTypeChecker();
         const sourceFile = program.getSourceFile(request.fileName);
 
@@ -229,21 +224,21 @@ function createApp() {
         const type = typeChecker.getTypeAtLocation(node);
         logger.info(`[TS-Viewer][Type] ${type?.flags}`);
 
-        typeInfoString = typeChecker.typeToString(type, undefined, TypeFormatFlags);
-      }
-      if (!typeInfoString) {
-        throw new Error('type info not found');
-      }
+        const typeInfoString = typeChecker.typeToString(type, undefined, TypeFormatFlags);
+        if (!typeInfoString) {
+          throw new Error('type info not found');
+        }
 
-      setCachedTypeInfo(cacheKey, typeInfoString);
-      logger.info(`[TS-Viewer][Type-Info-Length] ${typeInfoString.length}`);
+        setCachedTypeInfo(cacheKey, typeInfoString);
+        logger.info(`[TS-Viewer][Type-Info-Length] ${typeInfoString.length}`);
 
-      res.status(HttpStatusOk).json(createSuccessResponse(typeInfoString));
-    } catch (err) {
-      console.error(err);
-      res.status(HttpStatusOk).json(createErrorResponse(err));
-    }
-  });
+        res.status(HttpStatusOk).json(createSuccessResponse(typeInfoString));
+      } catch (err) {
+        console.error(err);
+        res.status(HttpStatusOk).json(createErrorResponse(err));
+      }
+    },
+  );
 
   return app;
 }
@@ -284,7 +279,9 @@ function getTypeCacheKey(program: ts.Program, request: GetTypeRequest) {
   const sourceFile = program.getSourceFile(request.fileName);
   const sourceFileVersion =
     (sourceFile as { version?: string } | undefined)?.version ??
-    (sourceFile ? String(sourceFile.text.length) : String(ts.sys.readFile(request.fileName)?.length ?? 0));
+    (sourceFile
+      ? String(sourceFile.text.length)
+      : String(ts.sys.readFile(request.fileName)?.length ?? 0));
   return `${request.fileName}:${request.position}:${sourceFileVersion}`;
 }
 

@@ -24,7 +24,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const [ViewCommandName, ViewCommandImpl] = getViewService().command;
   context.subscriptions.push(vscode.commands.registerCommand(ViewCommandName, ViewCommandImpl));
 
-  const [ViewAtCursorCommandName, ViewAtCursorCommandImpl] = getViewAtCursorService(connection).command;
+  const [ViewAtCursorCommandName, ViewAtCursorCommandImpl] =
+    getViewAtCursorService(connection).command;
   context.subscriptions.push(
     vscode.commands.registerCommand(ViewAtCursorCommandName, ViewAtCursorCommandImpl),
   );

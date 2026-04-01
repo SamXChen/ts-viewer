@@ -6,9 +6,7 @@ import { assert, fixturesRoot, readJson, repoRoot } from './lib/fixture-smoke';
 import {
   pluginSourceRoot,
   pluginUtilitySourcePaths,
-  pluginVueSourcePaths,
   serviceSourcePath,
-  vueSourcePath,
 } from './lib/plugin-runtime';
 import { requireTranspiledModuleGraph } from './lib/transpile-module';
 
@@ -29,12 +27,14 @@ interface ServiceModule {
 
 const LoopbackHost = '127.0.0.1';
 const GetTypeRoutePath = '/get-type';
-const StabilityFixtureNames = ['typescript-workspace', 'vue-workspace'] as const;
+const StabilityFixtureNames = ['typescript-workspace'] as const;
 
 void main();
 
 async function main() {
-  const scenarios = readJson<StabilityScenario[]>(path.join(fixturesRoot, 'stability-scenarios.json'));
+  const scenarios = readJson<StabilityScenario[]>(
+    path.join(fixturesRoot, 'stability-scenarios.json'),
+  );
   const serviceModule = await loadServiceModule();
   const fixturePrograms = createFixturePrograms();
 
@@ -52,7 +52,10 @@ async function main() {
 
     for (const scenario of scenarios) {
       const firstResponse = await requestTypeInfo(firstPort, scenario);
-      assert(firstResponse.type === 'success', `Initial request failed for ${scenario.name}: ${firstResponse.data}`);
+      assert(
+        firstResponse.type === 'success',
+        `Initial request failed for ${scenario.name}: ${firstResponse.data}`,
+      );
       for (const expectedText of scenario.expectedIncludes) {
         assert(
           String(firstResponse.data).includes(expectedText),
@@ -69,7 +72,10 @@ async function main() {
 
     for (const scenario of scenarios) {
       const secondResponse = await requestTypeInfo(secondPort, scenario);
-      assert(secondResponse.type === 'success', `Restarted request failed for ${scenario.name}: ${secondResponse.data}`);
+      assert(
+        secondResponse.type === 'success',
+        `Restarted request failed for ${scenario.name}: ${secondResponse.data}`,
+      );
       for (const expectedText of scenario.expectedIncludes) {
         assert(
           String(secondResponse.data).includes(expectedText),
@@ -87,7 +93,7 @@ async function main() {
 async function loadServiceModule() {
   return requireTranspiledModuleGraph<ServiceModule>({
     entrySourcePath: serviceSourcePath,
-    sourcePaths: [serviceSourcePath, ...pluginVueSourcePaths, ...pluginUtilitySourcePaths],
+    sourcePaths: [serviceSourcePath, ...pluginUtilitySourcePaths],
     sourceRoot: pluginSourceRoot,
     tempRoot: path.join(repoRoot, 'packages', 'plugin', '.tmp'),
   });
@@ -103,14 +109,23 @@ function createFixturePrograms() {
       throw new Error(ts.flattenDiagnosticMessageText(readResult.error.messageText, '\n'));
     }
 
-    const parsed = ts.parseJsonConfigFileContent(readResult.config, ts.sys, path.dirname(configPath));
+    const parsed = ts.parseJsonConfigFileContent(
+      readResult.config,
+      ts.sys,
+      path.dirname(configPath),
+    );
     if (parsed.errors.length > 0) {
       throw new Error(
-        parsed.errors.map((error) => ts.flattenDiagnosticMessageText(error.messageText, '\n')).join('\n'),
+        parsed.errors
+          .map((error) => ts.flattenDiagnosticMessageText(error.messageText, '\n'))
+          .join('\n'),
       );
     }
 
-    map.set(fixtureName, ts.createProgram({ rootNames: parsed.fileNames, options: parsed.options }));
+    map.set(
+      fixtureName,
+      ts.createProgram({ rootNames: parsed.fileNames, options: parsed.options }),
+    );
   }
 
   return map;

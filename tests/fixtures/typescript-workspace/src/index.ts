@@ -50,11 +50,14 @@ type AuditTrail = {
     archiveBucket: string;
     legalHold: boolean;
   };
-  integrations: Record<string, {
-    enabled: boolean;
-    endpoint: string;
-    retries: number;
-  }>;
+  integrations: Record<
+    string,
+    {
+      enabled: boolean;
+      endpoint: string;
+      retries: number;
+    }
+  >;
 };
 
 export type ExpandedAuditTrail = AuditTrail;

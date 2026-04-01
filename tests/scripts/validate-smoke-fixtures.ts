@@ -1,13 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  assert,
-  fixturesRoot,
-  readJson,
-  readText,
-  repoRoot,
-} from './lib/fixture-smoke';
-import { pluginVueSourcePaths, serviceSourcePath } from './lib/plugin-runtime';
+import { assert, fixturesRoot, readJson, readText, repoRoot } from './lib/fixture-smoke';
+import { serviceSourcePath } from './lib/plugin-runtime';
 
 interface ExpectedFixture {
   files: string[];
@@ -30,15 +24,6 @@ interface InteractionScenarioShape {
   usageScenario?: string;
 }
 
-interface VueScenarioShape {
-  expectedIncludes?: string[];
-  file?: string;
-  name?: string;
-  positionOffset?: number;
-  searchText?: string;
-  symbolName?: string;
-}
-
 interface StabilityScenarioShape {
   expectedIncludes?: string[];
   file?: string;
@@ -55,10 +40,8 @@ const connectionPath = path.join(repoRoot, 'packages', 'extension', 'src', 'conn
 const servicePath = serviceSourcePath;
 const scenariosPath = path.join(fixturesRoot, 'usage-scenarios.json');
 const interactionScenariosPath = path.join(fixturesRoot, 'interaction-scenarios.json');
-const vueScenariosPath = path.join(fixturesRoot, 'vue-sfc-scenarios.json');
 const stabilityScenariosPath = path.join(fixturesRoot, 'stability-scenarios.json');
 const typeInfoPath = path.join(repoRoot, 'packages', 'extension', 'src', 'type-info.ts');
-const vueMappingPaths = pluginVueSourcePaths;
 
 const expectedFixtures: ExpectedFixture[] = [
   {
@@ -76,11 +59,6 @@ const expectedFixtures: ExpectedFixture[] = [
     files: ['tsconfig.json', 'src/app.tsx', 'src/jsx.d.ts'],
     snippets: [['src/app.tsx', 'export const panel = <section role="region">']],
   },
-  {
-    name: 'vue-workspace',
-    files: ['tsconfig.json', 'src/App.vue', 'src/DualScript.vue', 'src/models.ts', 'src/vue-shim.d.ts'],
-    snippets: [['src/App.vue', 'const props = defineProps<Props>()']],
-  },
 ];
 
 main();
@@ -93,7 +71,6 @@ function main() {
   const connectionSource = readText(connectionPath);
   const serviceSource = readText(servicePath);
   const typeInfoSource = readText(typeInfoPath);
-  const vueMappingSource = vueMappingPaths.map((filePath) => readText(filePath)).join('\n');
 
   validateManifest(manifest);
   validateSelectors(selectorsSource);
@@ -102,12 +79,10 @@ function main() {
   validateConnectionSource(connectionSource);
   validateServiceSource(serviceSource);
   validateTypeInfoSource(typeInfoSource);
-  validateVueMappingSource(vueMappingSource);
   validateStabilityHooks(serviceSource);
   validateFixtures();
   validateUsageScenarios();
   validateInteractionScenarios();
-  validateVueScenarios();
   validateStabilityScenarios();
 
   console.log('Smoke fixture validation passed.');
@@ -121,7 +96,6 @@ function validateManifest(manifest: { activationEvents?: string[] }) {
     'onLanguage:typescriptreact',
     'onLanguage:javascript',
     'onLanguage:javascriptreact',
-    'onLanguage:vue',
   ];
 
   for (const event of requiredEvents) {
@@ -130,7 +104,7 @@ function validateManifest(manifest: { activationEvents?: string[] }) {
 }
 
 function validateSelectors(source: string) {
-  for (const selector of ['typescript', 'typescriptreact', 'javascript', 'javascriptreact', 'vue']) {
+  for (const selector of ['typescript', 'typescriptreact', 'javascript', 'javascriptreact']) {
     assert(source.includes(`'${selector}'`), `Missing selector: ${selector}`);
   }
 
@@ -139,11 +113,18 @@ function validateSelectors(source: string) {
 }
 
 function validateHoverRegistration(source: string) {
-  assert(source.includes('registerHoverProvider(hoverSelectors'), 'Hover provider should use hoverSelectors');
+  assert(
+    source.includes('registerHoverProvider(hoverSelectors'),
+    'Hover provider should use hoverSelectors',
+  );
 }
 
 function validateHoverGuard(source: string) {
-  for (const snippet of ['shouldSkipHoverDocument', "document.uri.scheme !== 'file'", "document.uri.scheme !== 'untitled'", "includes('.vue.')"]) {
+  for (const snippet of [
+    'shouldSkipHoverDocument',
+    "document.uri.scheme !== 'file'",
+    "document.uri.scheme !== 'untitled'",
+  ]) {
     assert(source.includes(snippet), `Hover guard missing snippet: ${snippet}`);
   }
 }
@@ -160,7 +141,10 @@ function validateConnectionSource(source: string) {
     assert(source.includes(snippet), `Connection smoke guard missing snippet: ${snippet}`);
   }
 
-  assert(!source.includes("ensureConnected('activate')"), 'Connection should be lazy and not auto-connect on activate');
+  assert(
+    !source.includes("ensureConnected('activate')"),
+    'Connection should be lazy and not auto-connect on activate',
+  );
 }
 
 function validateServiceSource(source: string) {
@@ -178,19 +162,13 @@ function validateServiceSource(source: string) {
 }
 
 function validateTypeInfoSource(source: string) {
-  for (const snippet of ['createTypeInfoPayload', 'createPreview', 'toViewRequest', 'PreviewMaxLines']) {
-    assert(source.includes(snippet), `Type-info smoke guard missing snippet: ${snippet}`);
-  }
-}
-
-function validateVueMappingSource(source: string) {
   for (const snippet of [
-    'resolveVueTypeInfo',
-    'createVueVirtualFileContext',
-    'collectVueScriptBlocks',
-    'isScriptSetup',
+    'createTypeInfoPayload',
+    'createPreview',
+    'toViewRequest',
+    'PreviewMaxLines',
   ]) {
-    assert(source.includes(snippet), `Vue mapping smoke guard missing snippet: ${snippet}`);
+    assert(source.includes(snippet), `Type-info smoke guard missing snippet: ${snippet}`);
   }
 }
 
@@ -201,7 +179,10 @@ function validateFixtures() {
 
     for (const relativeFile of fixture.files) {
       const absoluteFile = path.join(fixtureRoot, relativeFile);
-      assert(readablePathExists(absoluteFile), `Missing fixture file: ${fixture.name}/${relativeFile}`);
+      assert(
+        readablePathExists(absoluteFile),
+        `Missing fixture file: ${fixture.name}/${relativeFile}`,
+      );
     }
 
     for (const [relativeFile, snippet] of fixture.snippets) {
@@ -221,8 +202,14 @@ function validateUsageScenarios() {
 
   for (const scenario of scenarios) {
     assert(typeof scenario.name === 'string', 'Usage scenario is missing a name');
-    assert(typeof scenario.fixture === 'string', `Usage scenario ${scenario.name} is missing a fixture`);
-    assert(typeof scenario.symbol === 'string', `Usage scenario ${scenario.name} is missing a symbol`);
+    assert(
+      typeof scenario.fixture === 'string',
+      `Usage scenario ${scenario.name} is missing a fixture`,
+    );
+    assert(
+      typeof scenario.symbol === 'string',
+      `Usage scenario ${scenario.name} is missing a symbol`,
+    );
     assert(
       Array.isArray(scenario.expectedIncludes) && scenario.expectedIncludes.length > 0,
       `Usage scenario ${scenario.name} must define expectedIncludes`,
@@ -240,9 +227,13 @@ function validateInteractionScenarios() {
       typeof scenario.usageScenario === 'string',
       `Interaction scenario ${scenario.name} is missing usageScenario`,
     );
-    assert(typeof scenario.symbolName === 'string', `Interaction scenario ${scenario.name} is missing symbolName`);
     assert(
-      Array.isArray(scenario.expectedPreviewIncludes) && scenario.expectedPreviewIncludes.length > 0,
+      typeof scenario.symbolName === 'string',
+      `Interaction scenario ${scenario.name} is missing symbolName`,
+    );
+    assert(
+      Array.isArray(scenario.expectedPreviewIncludes) &&
+        scenario.expectedPreviewIncludes.length > 0,
       `Interaction scenario ${scenario.name} must define expectedPreviewIncludes`,
     );
     assert(
@@ -252,28 +243,13 @@ function validateInteractionScenarios() {
   }
 }
 
-function validateVueScenarios() {
-  const scenarios = readJson<VueScenarioShape[]>(vueScenariosPath);
-  assert(Array.isArray(scenarios), 'Vue SFC scenarios file must contain an array');
-
-  for (const scenario of scenarios) {
-    assert(typeof scenario.name === 'string', 'Vue SFC scenario is missing a name');
-    assert(typeof scenario.file === 'string', `Vue SFC scenario ${scenario.name} is missing a file`);
-    assert(typeof scenario.searchText === 'string', `Vue SFC scenario ${scenario.name} is missing searchText`);
-    assert(
-      scenario.positionOffset === undefined || typeof scenario.positionOffset === 'number',
-      `Vue SFC scenario ${scenario.name} must define numeric positionOffset when provided`,
-    );
-    assert(typeof scenario.symbolName === 'string', `Vue SFC scenario ${scenario.name} is missing symbolName`);
-    assert(
-      Array.isArray(scenario.expectedIncludes) && scenario.expectedIncludes.length > 0,
-      `Vue SFC scenario ${scenario.name} must define expectedIncludes`,
-    );
-  }
-}
-
 function validateStabilityHooks(source: string) {
-  for (const snippet of ['stopListen', 'resetServiceStateForTests', 'requestTimeout', "express.json({ limit:"]) {
+  for (const snippet of [
+    'stopListen',
+    'resetServiceStateForTests',
+    'requestTimeout',
+    'express.json({ limit:',
+  ]) {
     assert(source.includes(snippet), `Service stability smoke guard missing snippet: ${snippet}`);
   }
 }
@@ -284,9 +260,18 @@ function validateStabilityScenarios() {
 
   for (const scenario of scenarios) {
     assert(typeof scenario.name === 'string', 'Stability scenario is missing a name');
-    assert(typeof scenario.fixture === 'string', `Stability scenario ${scenario.name} is missing a fixture`);
-    assert(typeof scenario.file === 'string', `Stability scenario ${scenario.name} is missing a file`);
-    assert(typeof scenario.searchText === 'string', `Stability scenario ${scenario.name} is missing searchText`);
+    assert(
+      typeof scenario.fixture === 'string',
+      `Stability scenario ${scenario.name} is missing a fixture`,
+    );
+    assert(
+      typeof scenario.file === 'string',
+      `Stability scenario ${scenario.name} is missing a file`,
+    );
+    assert(
+      typeof scenario.searchText === 'string',
+      `Stability scenario ${scenario.name} is missing searchText`,
+    );
     assert(
       Array.isArray(scenario.expectedIncludes) && scenario.expectedIncludes.length > 0,
       `Stability scenario ${scenario.name} must define expectedIncludes`,

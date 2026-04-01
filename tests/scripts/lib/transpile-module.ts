@@ -30,7 +30,11 @@ export async function requireTranspiledModuleGraph<TModule>(
       writeTranspiledFile(sourcePath, options.sourceRoot, tempDirectory);
     }
 
-    const entryOutputPath = toOutputPath(options.entrySourcePath, options.sourceRoot, tempDirectory);
+    const entryOutputPath = toOutputPath(
+      options.entrySourcePath,
+      options.sourceRoot,
+      tempDirectory,
+    );
     const requireFromTemp = createRequire(entryOutputPath);
     return requireFromTemp(entryOutputPath) as TModule;
   } finally {
@@ -41,11 +45,15 @@ export async function requireTranspiledModuleGraph<TModule>(
 function writeTranspiledFile(sourcePath: string, sourceRoot: string, tempDirectory: string) {
   const outputPath = toOutputPath(sourcePath, sourceRoot, tempDirectory);
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-  fs.writeFileSync(outputPath, transpileSource(sourcePath, {
-    module: ts.ModuleKind.CommonJS,
-    target: ts.ScriptTarget.ES2020,
-    esModuleInterop: true,
-  }), 'utf8');
+  fs.writeFileSync(
+    outputPath,
+    transpileSource(sourcePath, {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+      esModuleInterop: true,
+    }),
+    'utf8',
+  );
 }
 
 function toOutputPath(sourcePath: string, sourceRoot: string, tempDirectory: string) {

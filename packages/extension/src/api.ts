@@ -50,7 +50,9 @@ export async function getType(
       }
 
       if (shouldRecover(error)) {
-        const recoveredPort = await connection.recover(`get-type request failed: ${getErrorMessage(error)}`);
+        const recoveredPort = await connection.recover(
+          `get-type request failed: ${getErrorMessage(error)}`,
+        );
         if (recoveredPort && !abortController.signal.aborted) {
           try {
             return await requestTypeInfo(req, recoveredPort, abortController.signal);
@@ -77,8 +79,8 @@ async function requestTypeInfo(request: GetTypeRequest, port: number, signal: Ab
     `http://${PluginLoopbackHost}:${port}${PluginGetTypeRoutePath}`,
     request,
     {
-    timeout: RequestTimeoutMs,
-    signal,
+      timeout: RequestTimeoutMs,
+      signal,
     },
   );
   return result.data;

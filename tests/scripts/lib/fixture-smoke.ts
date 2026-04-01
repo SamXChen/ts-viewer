@@ -7,7 +7,6 @@ export interface UsageScenario {
   expectedIncludes: string[];
   file: string;
   fixture: string;
-  kind?: 'vue-script-setup';
   name: string;
   symbol: string;
   tsconfig?: string;
@@ -33,10 +32,6 @@ export function runScenario(scenario: UsageScenario) {
   const configPath = path.join(fixtureRoot, scenario.tsconfig ?? 'tsconfig.json');
   const config = loadTsConfig(configPath);
 
-  if (scenario.kind === 'vue-script-setup') {
-    return runVueScenario(scenario, fixtureRoot, config);
-  }
-
   const filePath = path.join(fixtureRoot, scenario.file);
   const program = ts.createProgram({
     rootNames: config.fileNames,
@@ -58,46 +53,6 @@ export function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }
-}
-
-function runVueScenario(scenario: UsageScenario, fixtureRoot: string, config: ts.ParsedCommandLine) {
-  const vueFilePath = path.join(fixtureRoot, scenario.file);
-  const virtualFilePath = path.join(fixtureRoot, 'src', '__generated__', `${path.basename(scenario.file)}.ts`);
-  const sourceText = readText(vueFilePath);
-  const scriptSetupText = extractScriptSetup(sourceText, scenario.name);
-  const virtualFileText = `${scriptSetupText}\nexport {};\n`;
-
-  const host = ts.createCompilerHost(config.options);
-  const originalFileExists = host.fileExists.bind(host);
-  const originalReadFile = host.readFile.bind(host);
-  const originalGetSourceFile = host.getSourceFile.bind(host);
-
-  host.fileExists = (fileName) => {
-    if (samePath(fileName, virtualFilePath)) {
-      return true;
-    }
-    return originalFileExists(fileName);
-  };
-  host.readFile = (fileName) => {
-    if (samePath(fileName, virtualFilePath)) {
-      return virtualFileText;
-    }
-    return originalReadFile(fileName);
-  };
-  host.getSourceFile = (fileName, languageVersion, onError, shouldCreateNewSourceFile) => {
-    if (samePath(fileName, virtualFilePath)) {
-      return ts.createSourceFile(fileName, virtualFileText, languageVersion, true, ts.ScriptKind.TS);
-    }
-    return originalGetSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile);
-  };
-
-  const program = ts.createProgram({
-    rootNames: [...config.fileNames, virtualFilePath],
-    options: config.options,
-    host,
-  });
-
-  return getTypeTextFromProgram(program, virtualFilePath, scenario.symbol);
 }
 
 function getTypeTextFromProgram(program: ts.Program, filePath: string, symbolName: string) {
@@ -134,12 +89,6 @@ function findIdentifier(sourceFile: ts.SourceFile, symbolName: string) {
   }
 }
 
-function extractScriptSetup(sourceText: string, scenarioName: string) {
-  const match = sourceText.match(/<script\s+setup(?:\s+lang="ts")?>([\s\S]*?)<\/script>/);
-  assert(match?.[1], `Unable to extract <script setup> block for scenario ${scenarioName}`);
-  return match[1].trim();
-}
-
 function loadTsConfig(configPath: string) {
   const readResult = ts.readConfigFile(configPath, ts.sys.readFile);
   if (readResult.error) {
@@ -156,8 +105,4 @@ function loadTsConfig(configPath: string) {
 
 function formatDiagnostic(diagnostic: ts.Diagnostic) {
   return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-}
-
-function samePath(left: string, right: string) {
-  return path.normalize(left) === path.normalize(right);
 }

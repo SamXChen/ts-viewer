@@ -61,10 +61,7 @@ class PluginConnectionManager implements PluginConnection {
   private lastHealthyPort: number | undefined;
   private lastHealthCheckAt = 0;
 
-  constructor(
-    private readonly api: ApiV0,
-    private readonly defaultPort: number,
-  ) {
+  constructor(private readonly api: ApiV0, private readonly defaultPort: number) {
     this.subscriptions.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
         void this.ensureConnected('workspace folders changed');
@@ -224,9 +221,12 @@ function buildPortCandidates(defaultPort: number, excludedPort?: number) {
 async function waitForHealthy(port: number, retryCount = HealthRetryCount) {
   for (let attempt = 0; attempt < retryCount; attempt += 1) {
     try {
-      const response = await axios.get<PluginHealthResponse>(`http://${PluginLoopbackHost}:${port}${PluginHealthRoutePath}`, {
-        timeout: HealthCheckTimeoutMs,
-      });
+      const response = await axios.get<PluginHealthResponse>(
+        `http://${PluginLoopbackHost}:${port}${PluginHealthRoutePath}`,
+        {
+          timeout: HealthCheckTimeoutMs,
+        },
+      );
 
       if (isPluginHealthResponse(response.data, port)) {
         return true;

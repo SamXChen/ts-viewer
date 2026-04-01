@@ -8,10 +8,9 @@
     "build": "turbo run build",
     "validate:fixtures": "pnpm --filter @ts-viewer/shared build && pnpm validate:fixtures:static && pnpm test:fixtures",
     "validate:fixtures:static": "tsx ./tests/scripts/validate-smoke-fixtures.ts",
-    "test:fixtures": "pnpm test:fixtures:usage && pnpm test:fixtures:interaction && pnpm test:fixtures:vue && pnpm test:fixtures:stability",
+    "test:fixtures": "pnpm test:fixtures:usage && pnpm test:fixtures:interaction && pnpm test:fixtures:stability",
     "test:fixtures:usage": "tsx ./tests/scripts/run-fixture-usage-smoke.ts",
     "test:fixtures:interaction": "tsx ./tests/scripts/run-extension-interaction-smoke.ts",
-    "test:fixtures:vue": "tsx ./tests/scripts/run-vue-sfc-smoke.ts",
     "test:fixtures:stability": "tsx ./tests/scripts/run-service-stability-smoke.ts",
     "prerelease": "lerna version --no-private",
     "release": "lerna publish from-package --yes --no-private"
