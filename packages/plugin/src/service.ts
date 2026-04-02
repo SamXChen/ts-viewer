@@ -210,75 +210,75 @@ function createApp() {
           return;
         }
 
-        const request = req.body;
-        const info = getMatchedInfo(request.fileName);
-
-        const logger = info.project.projectService.logger;
-
-        logger.info(`[TS-Viewer][File-Name] ${request.fileName}, ${request.position}`);
-
-        const isVueFile = request.fileName.endsWith('.vue');
-
-        if (isVueFile) {
-          const typeInfoString = resolveVueTypeInfo(info, request, logger);
-          res.status(HttpStatusOk).json(createSuccessResponse(typeInfoString));
-          return;
-        }
-
-        const program = info.languageService.getProgram();
-        if (!program) {
-          throw new Error('program not found');
-        }
-
-        const currentDirectory = program.getCurrentDirectory();
-        logger.info(`[TS-Viewer][Current-Directory] ${currentDirectory}`);
-
-        const cacheKey = getTypeCacheKey(program, request);
-        const cachedTypeInfo = getCachedTypeInfo(cacheKey);
-        if (cachedTypeInfo) {
-          logger.info(`[TS-Viewer][Cache-Hit] ${request.fileName}, ${request.position}`);
-          res.status(HttpStatusOk).json(createSuccessResponse(cachedTypeInfo));
-          return;
-        }
-
-        const typeChecker = program.getTypeChecker();
-        const sourceFile = program.getSourceFile(request.fileName);
-
-        if (!sourceFile) {
-          throw new Error('sourceFile not found');
-        }
-        logger.info(`[TS-Viewer][Source-File] ${sourceFile.fileName}`);
-
-        const node = findNode(sourceFile, request.position);
-        if (!node) {
-          throw new Error('node not found');
-        }
-        logger.info(`[TS-Viewer][Node-Kind] ${ts.SyntaxKind[node.kind]}`);
-
-        const typeInfoString = resolveTypeStringAtNode(typeChecker, node);
-        if (!typeInfoString) {
-          throw new Error('type info not found');
-        }
-
-        setCachedTypeInfo(cacheKey, typeInfoString);
-        logger.info(`[TS-Viewer][Type-Info-Length] ${typeInfoString.length}`);
-
+        const typeInfoString = resolveTypeString(req.body);
         res.status(HttpStatusOk).json(createSuccessResponse(typeInfoString));
       } catch (err) {
-        const errorMessage = getErrorMessage(err);
-        try {
-          const errorInfo = getMatchedInfo(req.body?.fileName ?? '');
-          errorInfo.project.projectService.logger.info(`[TS-Viewer][Error] ${errorMessage}`);
-        } catch {
-          // logger unavailable
-        }
-        console.error('[TS-Viewer]', err);
+        logError(req.body?.fileName, err);
         res.status(HttpStatusOk).json(createErrorResponse(err));
       }
     },
   );
 
   return app;
+}
+
+function resolveTypeString(request: GetTypeRequest): string {
+  const info = getMatchedInfo(request.fileName);
+  const logger = info.project.projectService.logger;
+
+  logger.info(`[TS-Viewer][File-Name] ${request.fileName}, ${request.position}`);
+
+  if (request.fileName.endsWith('.vue')) {
+    return resolveVueTypeInfo(info, request, logger);
+  }
+
+  const program = info.languageService.getProgram();
+  if (!program) {
+    throw new Error('program not found');
+  }
+
+  logger.info(`[TS-Viewer][Current-Directory] ${program.getCurrentDirectory()}`);
+
+  const cacheKey = getTypeCacheKey(program, request);
+  const cachedTypeInfo = getCachedTypeInfo(cacheKey);
+  if (cachedTypeInfo) {
+    logger.info(`[TS-Viewer][Cache-Hit] ${request.fileName}, ${request.position}`);
+    return cachedTypeInfo;
+  }
+
+  const typeChecker = program.getTypeChecker();
+  const sourceFile = program.getSourceFile(request.fileName);
+  if (!sourceFile) {
+    throw new Error('sourceFile not found');
+  }
+  logger.info(`[TS-Viewer][Source-File] ${sourceFile.fileName}`);
+
+  const node = findNode(sourceFile, request.position);
+  if (!node) {
+    throw new Error('node not found');
+  }
+  logger.info(`[TS-Viewer][Node-Kind] ${ts.SyntaxKind[node.kind]}`);
+
+  const typeInfoString = resolveTypeStringAtNode(typeChecker, node);
+  if (!typeInfoString) {
+    throw new Error('type info not found');
+  }
+
+  setCachedTypeInfo(cacheKey, typeInfoString);
+  logger.info(`[TS-Viewer][Type-Info-Length] ${typeInfoString.length}`);
+
+  return typeInfoString;
+}
+
+function logError(fileName: string | undefined, err: unknown) {
+  const errorMessage = getErrorMessage(err);
+  try {
+    const errorInfo = getMatchedInfo(fileName ?? '');
+    errorInfo.project.projectService.logger.info(`[TS-Viewer][Error] ${errorMessage}`);
+  } catch {
+    // logger unavailable
+  }
+  console.error('[TS-Viewer]', err);
 }
 
 function isGetTypeRequest(input: unknown): input is GetTypeRequest {

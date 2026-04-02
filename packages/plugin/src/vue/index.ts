@@ -21,53 +21,92 @@ export function resolveVueTypeInfo(
 
   const checker = program.getTypeChecker();
 
-  const definitions = languageService.getDefinitionAtPosition(request.fileName, request.position);
-  logger.info(`[TS-Viewer][Vue-Definitions] count=${definitions?.length ?? 0}`);
+  const result =
+    tryResolveFromDefinitions(languageService, program, checker, request, logger) ??
+    tryResolveFromDirectLookup(program, checker, request, logger) ??
+    tryResolveFromQuickInfo(languageService, request, logger);
 
-  if (definitions && definitions.length > 0) {
-    for (const def of definitions) {
-      const defSourceFile = program.getSourceFile(def.fileName);
-      if (!defSourceFile) {
-        continue;
-      }
-
-      const defNode = findNode(defSourceFile, def.textSpan.start);
-      if (!defNode) {
-        continue;
-      }
-
-      const typeText = resolveTypeStringAtNode(checker, defNode);
-      if (typeText && typeText !== 'any') {
-        logger.info(`[TS-Viewer][Vue-Definition-Type] ${typeText.length}`);
-        return typeText;
-      }
-    }
-  }
-
-  const sourceFile = program.getSourceFile(request.fileName);
-  if (sourceFile) {
-    const node = findNode(sourceFile, request.position);
-    if (node) {
-      const typeText = resolveTypeStringAtNode(checker, node);
-      if (typeText && typeText !== 'any') {
-        logger.info(`[TS-Viewer][Vue-Direct-Type] ${typeText.length}`);
-        return typeText;
-      }
-    }
-  }
-
-  const quickInfo = languageService.getQuickInfoAtPosition(request.fileName, request.position);
-  if (quickInfo) {
-    logger.info(`[TS-Viewer][Vue-QuickInfo-Fallback] kind=${quickInfo.kind ?? 'unknown'}`);
-    const typeInfoString = extractTypeFromDisplayParts(quickInfo.displayParts);
-    if (typeInfoString) {
-      return typeInfoString;
-    }
+  if (result) {
+    return result;
   }
 
   throw new Error(
     'Vue type info not found. Make sure the Vue Official extension (Vue.volar) is installed and active.',
   );
+}
+
+function tryResolveFromDefinitions(
+  languageService: ts.LanguageService,
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  request: GetTypeRequest,
+  logger: ServiceLogger,
+): string | undefined {
+  const definitions = languageService.getDefinitionAtPosition(request.fileName, request.position);
+  logger.info(`[TS-Viewer][Vue-Definitions] count=${definitions?.length ?? 0}`);
+
+  if (!definitions || definitions.length === 0) {
+    return undefined;
+  }
+
+  for (const def of definitions) {
+    const defSourceFile = program.getSourceFile(def.fileName);
+    if (!defSourceFile) {
+      continue;
+    }
+
+    const defNode = findNode(defSourceFile, def.textSpan.start);
+    if (!defNode) {
+      continue;
+    }
+
+    const typeText = resolveTypeStringAtNode(checker, defNode);
+    if (typeText && typeText !== 'any') {
+      logger.info(`[TS-Viewer][Vue-Definition-Type] ${typeText.length}`);
+      return typeText;
+    }
+  }
+
+  return undefined;
+}
+
+function tryResolveFromDirectLookup(
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  request: GetTypeRequest,
+  logger: ServiceLogger,
+): string | undefined {
+  const sourceFile = program.getSourceFile(request.fileName);
+  if (!sourceFile) {
+    return undefined;
+  }
+
+  const node = findNode(sourceFile, request.position);
+  if (!node) {
+    return undefined;
+  }
+
+  const typeText = resolveTypeStringAtNode(checker, node);
+  if (typeText && typeText !== 'any') {
+    logger.info(`[TS-Viewer][Vue-Direct-Type] ${typeText.length}`);
+    return typeText;
+  }
+
+  return undefined;
+}
+
+function tryResolveFromQuickInfo(
+  languageService: ts.LanguageService,
+  request: GetTypeRequest,
+  logger: ServiceLogger,
+): string | undefined {
+  const quickInfo = languageService.getQuickInfoAtPosition(request.fileName, request.position);
+  if (!quickInfo) {
+    return undefined;
+  }
+
+  logger.info(`[TS-Viewer][Vue-QuickInfo-Fallback] kind=${quickInfo.kind ?? 'unknown'}`);
+  return extractTypeFromDisplayParts(quickInfo.displayParts);
 }
 
 function extractTypeFromDisplayParts(displayParts: ts.SymbolDisplayPart[] | undefined) {

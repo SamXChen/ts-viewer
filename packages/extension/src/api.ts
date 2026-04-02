@@ -38,49 +38,57 @@ export async function getType(
   }
 
   try {
-    const port = connection.getPort() ?? (await connection.ensureConnected('type request'));
-    if (!port || abortController.signal.aborted) {
+    return await requestWithRecovery(req, connection, abortController.signal);
+  } catch (error) {
+    if (isCanceledError(error, abortController.signal)) {
       return undefined;
     }
-
-    try {
-      return await requestTypeInfo(req, port, abortController.signal);
-    } catch (error) {
-      if (isCanceledError(error, abortController.signal)) {
-        return undefined;
-      }
-
-      if (shouldRecover(error)) {
-        if (abortController.signal.aborted) {
-          return undefined;
-        }
-
-        const recoveredPort = await connection.recover(
-          `get-type request failed: ${getAxiosErrorMessage(error)}`,
-        );
-
-        if (abortController.signal.aborted) {
-          return undefined;
-        }
-
-        if (recoveredPort) {
-          try {
-            return await requestTypeInfo(req, recoveredPort, abortController.signal);
-          } catch (retryError) {
-            if (isCanceledError(retryError, abortController.signal)) {
-              return undefined;
-            }
-            return createErrorResponse(retryError);
-          }
-        }
-      }
-
-      return createErrorResponse(error);
-    }
-  } catch (error) {
     return createErrorResponse(error);
   } finally {
     cancellationSubscription?.dispose();
+  }
+}
+
+async function requestWithRecovery(
+  req: GetTypeRequest,
+  connection: PluginConnection,
+  signal: AbortSignal,
+): Promise<GetTypeResponse | undefined> {
+  const port = connection.getPort() ?? (await connection.ensureConnected('type request'));
+  if (!port || signal.aborted) {
+    return undefined;
+  }
+
+  try {
+    return await requestTypeInfo(req, port, signal);
+  } catch (error) {
+    if (isCanceledError(error, signal)) {
+      return undefined;
+    }
+
+    if (!shouldRecover(error)) {
+      return createErrorResponse(error);
+    }
+
+    throwIfAborted(signal);
+
+    const recoveredPort = await connection.recover(
+      `get-type request failed: ${getAxiosErrorMessage(error)}`,
+    );
+
+    throwIfAborted(signal);
+
+    if (!recoveredPort) {
+      return createErrorResponse(error);
+    }
+
+    return await requestTypeInfo(req, recoveredPort, signal);
+  }
+}
+
+function throwIfAborted(signal: AbortSignal) {
+  if (signal.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
   }
 }
 
