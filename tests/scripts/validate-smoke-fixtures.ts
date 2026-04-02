@@ -128,8 +128,7 @@ function validateHoverRegistration(source: string) {
 function validateHoverGuard(source: string) {
   for (const snippet of [
     'shouldSkipHoverDocument',
-    "document.uri.scheme !== 'file'",
-    "document.uri.scheme !== 'untitled'",
+    'SupportedUriSchemes',
   ]) {
     assert(source.includes(snippet), `Hover guard missing snippet: ${snippet}`);
   }
@@ -174,7 +173,7 @@ function validateServiceSource(source: string) {
   );
 
   assert(
-    source.includes('[TS-Viewer][Error]'),
+    source.includes('[ts-viewer:error]'),
     'Plugin service catch block should log errors to TS Server logger',
   );
 }

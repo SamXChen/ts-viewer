@@ -10,5 +10,6 @@ export const pluginUtilitySourcePaths = [
   path.join(pluginUtilsRoot, 'path.ts'),
   path.join(pluginUtilsRoot, 'syntax.ts'),
   path.join(pluginUtilsRoot, 'type-format.ts'),
+  path.join(pluginUtilsRoot, 'type-resolve.ts'),
 ];
 export const pluginVueSourcePaths = [path.join(pluginVueRoot, 'index.ts')];

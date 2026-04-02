@@ -1,5 +1,5 @@
 import { server as tsServer } from 'typescript/lib/tsserverlibrary';
-import * as ts from 'typescript';
+import ts from 'typescript';
 import type { GetTypeRequest } from '@ts-viewer/shared';
 import { findNode } from '../utils/syntax';
 import { resolveTypeStringAtNode } from '../utils/type-resolve';

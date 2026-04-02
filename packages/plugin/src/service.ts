@@ -14,7 +14,7 @@ import * as http from 'http';
 
 import { server as tsServer } from 'typescript/lib/tsserverlibrary';
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 import { ExpiringCache } from './utils/expiring-cache';
 import { normalizeFsPath, isPathInside } from './utils/path';
 import { findNode } from './utils/syntax';
