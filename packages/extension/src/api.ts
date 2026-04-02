@@ -1,6 +1,7 @@
 import {
   PluginGetTypeRoutePath,
   PluginLoopbackHost,
+  createErrorResponse,
   type GetTypeRequest,
   type GetTypeResponse,
 } from '@ts-viewer/shared';
@@ -55,7 +56,7 @@ export async function getType(
         }
 
         const recoveredPort = await connection.recover(
-          `get-type request failed: ${getErrorMessage(error)}`,
+          `get-type request failed: ${getAxiosErrorMessage(error)}`,
         );
 
         if (abortController.signal.aborted) {
@@ -103,14 +104,7 @@ function isCanceledError(error: unknown, signal: AbortSignal) {
   return signal.aborted || (axios.isAxiosError(error) && error.code === 'ERR_CANCELED');
 }
 
-function createErrorResponse(error: unknown): GetTypeResponse {
-  return {
-    type: 'error',
-    data: getErrorMessage(error),
-  };
-}
-
-function getErrorMessage(error: unknown) {
+function getAxiosErrorMessage(error: unknown) {
   if (axios.isAxiosError(error)) {
     if (error.code === 'ECONNABORTED') {
       return `Request timed out after ${RequestTimeoutMs}ms`;

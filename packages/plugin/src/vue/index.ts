@@ -2,7 +2,7 @@ import { server as tsServer } from 'typescript/lib/tsserverlibrary';
 import * as ts from 'typescript';
 import type { GetTypeRequest } from '@ts-viewer/shared';
 import { findNode } from '../utils/syntax';
-import { TypeFormatFlags } from '../utils/type-format';
+import { resolveTypeStringAtNode } from '../utils/type-resolve';
 
 export interface ServiceLogger {
   info(message: string): void;
@@ -36,8 +36,7 @@ export function resolveVueTypeInfo(
         continue;
       }
 
-      const type = checker.getTypeAtLocation(defNode);
-      const typeText = checker.typeToString(type, undefined, TypeFormatFlags);
+      const typeText = resolveTypeStringAtNode(checker, defNode);
       if (typeText && typeText !== 'any') {
         logger.info(`[TS-Viewer][Vue-Definition-Type] ${typeText.length}`);
         return typeText;
@@ -49,8 +48,7 @@ export function resolveVueTypeInfo(
   if (sourceFile) {
     const node = findNode(sourceFile, request.position);
     if (node) {
-      const type = checker.getTypeAtLocation(node);
-      const typeText = checker.typeToString(type, undefined, TypeFormatFlags);
+      const typeText = resolveTypeStringAtNode(checker, node);
       if (typeText && typeText !== 'any') {
         logger.info(`[TS-Viewer][Vue-Direct-Type] ${typeText.length}`);
         return typeText;

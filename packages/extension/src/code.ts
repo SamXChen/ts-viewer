@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { ExpiringCache } from '@ts-viewer/shared';
 import { getType } from './api';
 import { selectors } from './constants';
 import type { PluginConnection } from './connection';
@@ -23,7 +24,10 @@ export function getSharedOutputChannel() {
 }
 
 export class HoverProvider implements vscode.HoverProvider {
-  private readonly cache = new Map<string, { expiresAt: number; value: TypeInfoPayload | null }>();
+  private readonly cache = new ExpiringCache<string, TypeInfoPayload | null>({
+    ttlMs: HoverCacheTtlMs,
+    maxSize: MaxHoverCacheSize,
+  });
 
   constructor(private readonly connection: PluginConnection) {}
 
@@ -57,15 +61,10 @@ export class HoverProvider implements vscode.HoverProvider {
     cancellationToken?: vscode.CancellationToken,
   ) {
     const cacheKey = getCacheKey(document, position);
-    const now = Date.now();
 
     const cached = this.cache.get(cacheKey);
-    if (cached && cached.expiresAt > now) {
-      return cached.value;
-    }
-
-    if (cached) {
-      this.cache.delete(cacheKey);
+    if (cached !== undefined) {
+      return cached;
     }
 
     const value = await resolveTypeInfo(
@@ -79,30 +78,9 @@ export class HoverProvider implements vscode.HoverProvider {
       return null;
     }
 
-    this.cache.set(cacheKey, {
-      expiresAt: now + HoverCacheTtlMs,
-      value,
-    });
-
-    this.pruneExpiredEntries(now);
-
-    while (this.cache.size > MaxHoverCacheSize) {
-      const firstKey = this.cache.keys().next().value;
-      if (!firstKey) {
-        break;
-      }
-      this.cache.delete(firstKey);
-    }
+    this.cache.set(cacheKey, value);
 
     return value;
-  }
-
-  private pruneExpiredEntries(now: number) {
-    for (const [key, entry] of this.cache.entries()) {
-      if (entry.expiresAt <= now) {
-        this.cache.delete(key);
-      }
-    }
   }
 }
 

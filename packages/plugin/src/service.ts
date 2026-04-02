@@ -3,6 +3,8 @@ import {
   PluginHealthKind,
   PluginHealthRoutePath,
   PluginLoopbackHost,
+  createErrorResponse,
+  getErrorMessage,
   type GetTypeRequest,
   type GetTypeResponse,
   type PluginHealthResponse,
@@ -16,7 +18,7 @@ import * as ts from 'typescript';
 import { ExpiringCache } from './utils/expiring-cache';
 import { normalizeFsPath, isPathInside } from './utils/path';
 import { findNode } from './utils/syntax';
-import { TypeFormatFlags } from './utils/type-format';
+import { resolveTypeStringAtNode } from './utils/type-resolve';
 import { resolveVueTypeInfo } from './vue';
 
 const createdInfoMap = new Map<string, tsServer.PluginCreateInfo>();
@@ -253,10 +255,7 @@ function createApp() {
         }
         logger.info(`[TS-Viewer][Node-Kind] ${ts.SyntaxKind[node.kind]}`);
 
-        const type = typeChecker.getTypeAtLocation(node);
-        logger.info(`[TS-Viewer][Type] ${type?.flags}`);
-
-        const typeInfoString = typeChecker.typeToString(type, undefined, TypeFormatFlags);
+        const typeInfoString = resolveTypeStringAtNode(typeChecker, node);
         if (!typeInfoString) {
           throw new Error('type info not found');
         }
@@ -266,7 +265,7 @@ function createApp() {
 
         res.status(HttpStatusOk).json(createSuccessResponse(typeInfoString));
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
+        const errorMessage = getErrorMessage(err);
         try {
           const errorInfo = getMatchedInfo(req.body?.fileName ?? '');
           errorInfo.project.projectService.logger.info(`[TS-Viewer][Error] ${errorMessage}`);
@@ -304,13 +303,6 @@ function createHealthResponse(): PluginHealthResponse {
     kind: PluginHealthKind,
     port: serverState?.port ?? 0,
     projectCount: createdInfoMap.size,
-  };
-}
-
-function createErrorResponse(error: unknown): GetTypeResponse {
-  return {
-    type: 'error',
-    data: error instanceof Error ? error.message : String(error),
   };
 }
 

@@ -38,12 +38,11 @@ function setViewRequestMap(requestParams: ViewRequestParams) {
     data: requestParams,
   });
   while (ViewRequestMap.size > MaxViewRequestMapSize) {
-    const minCreateTime = Math.min(
-      ...Array.from(ViewRequestMap.values()).map((item) => item.createTime),
-    );
-    ViewRequestMap.delete(
-      Array.from(ViewRequestMap.entries()).find((item) => item[1].createTime === minCreateTime)![0],
-    );
+    const oldestKey = ViewRequestMap.keys().next().value;
+    if (oldestKey === undefined) {
+      break;
+    }
+    ViewRequestMap.delete(oldestKey);
   }
 
   return key;
