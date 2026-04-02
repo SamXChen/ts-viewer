@@ -20,6 +20,15 @@ const ViewRequestMap = new Map<
   }
 >();
 
+export function getViewService() {
+  return {
+    command: [ViewCommandName, viewImpl],
+    documentProvider: [DocumentProviderName, documentProviderImpl],
+    genViewLink,
+    openView,
+  } as const;
+}
+
 function setViewRequestMap(requestParams: ViewRequestParams) {
   const createTime = Date.now();
   const key = `${createTime}-${Math.random().toString(36).slice(-ViewRequestKeyLength)}`;
@@ -95,13 +104,4 @@ function documentProviderImpl(uri: vscode.Uri) {
     return '';
   }
   return String(indexInfo.data.text);
-}
-
-export function getViewService() {
-  return {
-    command: [ViewCommandName, viewImpl],
-    documentProvider: [DocumentProviderName, documentProviderImpl],
-    genViewLink,
-    openView,
-  } as const;
 }
