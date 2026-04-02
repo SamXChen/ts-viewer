@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
     "strict": true,
-    "target": "es6",
+    "target": "es2019",
     "module": "commonjs",
     "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
     "declaration": true,
     "declarationMap": true,
     "emitDeclarationOnly": true,

@@ -80,6 +80,6 @@
     "esbuild": "0.19.4",
     "esno": "0.17.0",
     "prettier": "2.7.1",
-    "typescript": "5.2.2"
+    "typescript": "6.0.2"
   }
 }
