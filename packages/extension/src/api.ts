@@ -56,8 +56,11 @@ async function requestWithRecovery(
   connection: PluginConnection,
   signal: AbortSignal,
 ): Promise<GetTypeResponse | undefined> {
+  const outputChannel = connection.getOutputChannel();
   const port = connection.getPort() ?? (await connection.ensureConnected('type request'));
   if (!port || signal.aborted) {
+    const skipReason = `port=${port ?? 'none'}, aborted=${signal.aborted}`;
+    outputChannel.appendLine(`[ts-viewer:api] requestWithRecovery skipped (${skipReason})`);
     return undefined;
   }
 
@@ -68,22 +71,31 @@ async function requestWithRecovery(
       return undefined;
     }
 
-    if (!shouldRecover(error)) {
+    const errorCode = axios.isAxiosError(error) ? error.code ?? 'UNKNOWN' : 'NON_AXIOS';
+    const errorMsg = getAxiosErrorMessage(error);
+    const recoverable = shouldRecover(error);
+    outputChannel.appendLine(
+      `[ts-viewer:api] request failed on port ${port} (code=${errorCode}, recoverable=${recoverable}, file=${req.fileName}): ${errorMsg}`,
+    );
+
+    if (!recoverable) {
       return createErrorResponse(error);
     }
 
     throwIfAborted(signal);
 
-    const recoveredPort = await connection.recover(
-      `get-type request failed: ${getAxiosErrorMessage(error)}`,
-    );
+    const recoveredPort = await connection.recover(`get-type request failed: ${errorMsg}`);
 
     throwIfAborted(signal);
 
     if (!recoveredPort) {
+      outputChannel.appendLine(`[ts-viewer:api] recovery failed, no port available`);
       return createErrorResponse(error);
     }
 
+    outputChannel.appendLine(
+      `[ts-viewer:api] recovered to port ${recoveredPort}, retrying request`,
+    );
     return await requestTypeInfo(req, recoveredPort, signal);
   }
 }

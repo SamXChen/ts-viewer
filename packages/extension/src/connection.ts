@@ -154,6 +154,12 @@ class PluginConnectionManager implements PluginConnection {
   }
 
   private async configure(reason: string, forceNewPort: boolean) {
+    this.outputChannel.appendLine(
+      `[ts-viewer:connection] configure start (reason="${reason}", forceNewPort=${forceNewPort}, currentPort=${
+        this.currentPort ?? 'none'
+      })`,
+    );
+
     const currentPort = this.currentPort;
     if (!forceNewPort && currentPort) {
       const isHealthy = await this.isPortHealthy(currentPort, reason);
@@ -167,20 +173,32 @@ class PluginConnectionManager implements PluginConnection {
         ? await getAvailablePort(this.defaultPort, forceNewPort ? this.currentPort : undefined)
         : this.currentPort;
 
+    this.outputChannel.appendLine(
+      `[ts-viewer:connection] trying preferred port ${preferredPort} (reason="${reason}")`,
+    );
     const connectedPort = await this.applyConfig(preferredPort, reason);
     if (connectedPort) {
       return connectedPort;
     }
 
     if (forceNewPort) {
+      this.outputChannel.appendLine(
+        `[ts-viewer:connection] preferred port ${preferredPort} failed, forceNewPort=true, giving up`,
+      );
       return undefined;
     }
 
     const fallbackPort = await getAvailablePort(this.defaultPort, preferredPort);
     if (fallbackPort === preferredPort) {
+      this.outputChannel.appendLine(
+        `[ts-viewer:connection] no fallback port available (same as preferred=${preferredPort})`,
+      );
       return undefined;
     }
 
+    this.outputChannel.appendLine(
+      `[ts-viewer:connection] trying fallback port ${fallbackPort} (reason="${reason}")`,
+    );
     return this.applyConfig(fallbackPort, `${reason} (fallback port)`);
   }
 

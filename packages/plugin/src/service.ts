@@ -97,6 +97,12 @@ async function ensureListening(port: number) {
     return;
   }
 
+  const currentPort = serverState?.port ?? 'none';
+  console.log(
+    `[ts-viewer:server] ensureListening port=${port} (current=${currentPort}, listening=${
+      serverState?.server.listening ?? false
+    })`,
+  );
   clearTypeInfoCache();
   await closeServer();
   serverState = await createServer(port);
@@ -145,10 +151,18 @@ function createServer(port: number) {
     nextServer.headersTimeout = ServerHeadersTimeoutMs;
     nextServer.requestTimeout = ServerRequestTimeoutMs;
     nextServer.on('error', (error) => {
-      if (nextServer.listening) {
-        // console.error: tsServer logger not accessible in server event handler
-        console.error(error);
-      }
+      const code = (error as { code?: string })?.code ?? 'UNKNOWN';
+      // console.error: tsServer logger not accessible in server event handler
+      console.error(
+        `[ts-viewer:server] runtime error on port ${port} (code=${code}, listening=${nextServer.listening}):`,
+        error,
+      );
+    });
+    nextServer.on('close', () => {
+      const isExpected = serverState?.server !== nextServer;
+      console.log(
+        `[ts-viewer:server] server closed on port ${port} (expected=${isExpected}, listening=${nextServer.listening})`,
+      );
     });
   });
 }
@@ -270,7 +284,16 @@ function getMatchedInfo(fileName: string) {
 
   const result = directMatch ?? pathMatch;
   if (!result) {
-    throw new Error('info not found');
+    const keys = [...createdInfoMap.keys()];
+    const programStates = keys.map((key) => {
+      const info = createdInfoMap.get(key);
+      return `${key}(program=${!!info?.languageService.getProgram()})`;
+    });
+    throw new Error(
+      `info not found for "${fileName}" (entries=${createdInfoMap.size}: [${programStates.join(
+        ', ',
+      )}])`,
+    );
   }
   return result;
 }
@@ -333,10 +356,20 @@ function clearTypeInfoCache() {
 }
 
 function pruneCreatedInfoMap() {
+  const sizeBefore = createdInfoMap.size;
+  const removedKeys: string[] = [];
   for (const [key, info] of createdInfoMap.entries()) {
     const program = info.languageService.getProgram();
     if (!program) {
+      removedKeys.push(key);
       createdInfoMap.delete(key);
     }
+  }
+  if (removedKeys.length > 0) {
+    console.log(
+      `[ts-viewer:prune] removed ${removedKeys.length}/${sizeBefore} entries (remaining=${
+        createdInfoMap.size
+      }): ${removedKeys.join(', ')}`,
+    );
   }
 }
