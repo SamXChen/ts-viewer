@@ -18,7 +18,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const connection = await createPluginConnection(DefaultPort, outputChannel);
   if (!connection) {
-    outputChannel.appendLine('[ts-viewer:activate] extension stopped: plugin connection unavailable');
+    outputChannel.appendLine(
+      '[ts-viewer:activate] extension stopped: plugin connection unavailable',
+    );
     return;
   }
 
