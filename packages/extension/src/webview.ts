@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 const ViewCommandName = 'ts-viewer.view';
 const DocumentProviderName = ViewCommandName + '.document-provider';
 const ViewRequestKeyLength = 10;
+const DefaultViewTitle = 'ts-viewer';
+const DefaultViewLanguage = 'typescript';
 
 export interface ViewRequestParams {
   title?: string;
@@ -29,6 +31,49 @@ export function getViewService() {
   } as const;
 }
 
+async function openView(requestParams: ViewRequestParams) {
+  const index = setViewRequestMap(requestParams);
+  await viewImpl(index);
+}
+
+function genViewLink(linkName: string, requestParams: ViewRequestParams) {
+  const index = setViewRequestMap(requestParams);
+  const args = [index];
+  const encodedArgs = encodeURIComponent(JSON.stringify(args));
+  const commandUrl = `command:${ViewCommandName}?${encodedArgs}`;
+  const link = new vscode.MarkdownString(`[${linkName}](${commandUrl})`);
+  link.isTrusted = true;
+  return link;
+}
+
+async function viewImpl(index: string) {
+  const indexInfo = ViewRequestMap.get(index);
+  if (!indexInfo) {
+    return;
+  }
+
+  const title = indexInfo.data?.title ?? DefaultViewTitle;
+  const uri = vscode.Uri.file(title).with({
+    scheme: DocumentProviderName,
+    path: title,
+    query: `index=${index}`,
+  });
+
+  const doc = await vscode.workspace.openTextDocument(uri);
+  const editor = await vscode.window.showTextDocument(doc, {
+    preview: false,
+    viewColumn: vscode.ViewColumn.Beside,
+  });
+  await vscode.languages.setTextDocumentLanguage(
+    editor.document,
+    indexInfo.data?.language ?? DefaultViewLanguage,
+  );
+  const commandList = indexInfo.data.commandList ?? [];
+  for (const command of commandList) {
+    await vscode.commands.executeCommand(command);
+  }
+}
+
 function setViewRequestMap(requestParams: ViewRequestParams) {
   const createTime = Date.now();
   const key = `${createTime}-${Math.random().toString(36).slice(-ViewRequestKeyLength)}`;
@@ -46,49 +91,6 @@ function setViewRequestMap(requestParams: ViewRequestParams) {
   }
 
   return key;
-}
-
-async function viewImpl(index: string) {
-  const indexInfo = ViewRequestMap.get(index);
-  if (!indexInfo) {
-    return;
-  }
-
-  const title = indexInfo.data?.title ?? 'ts-viewer';
-  const uri = vscode.Uri.file(title).with({
-    scheme: DocumentProviderName,
-    path: title,
-    query: `index=${index}`,
-  });
-
-  const doc = await vscode.workspace.openTextDocument(uri);
-  const editor = await vscode.window.showTextDocument(doc, {
-    preview: false,
-    viewColumn: vscode.ViewColumn.Beside,
-  });
-  await vscode.languages.setTextDocumentLanguage(
-    editor.document,
-    indexInfo.data?.language ?? 'typescript',
-  );
-  const commandList = indexInfo.data.commandList ?? [];
-  for (const command of commandList) {
-    await vscode.commands.executeCommand(command);
-  }
-}
-
-async function openView(requestParams: ViewRequestParams) {
-  const index = setViewRequestMap(requestParams);
-  await viewImpl(index);
-}
-
-function genViewLink(linkName: string, requestParams: ViewRequestParams) {
-  const index = setViewRequestMap(requestParams);
-  const args = [index];
-  const encodedArgs = encodeURIComponent(JSON.stringify(args));
-  const commandUrl = `command:${ViewCommandName}?${encodedArgs}`;
-  const link = new vscode.MarkdownString(`[${linkName}](${commandUrl})`);
-  link.isTrusted = true;
-  return link;
 }
 
 function documentProviderImpl(uri: vscode.Uri) {

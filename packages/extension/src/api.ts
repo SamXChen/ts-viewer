@@ -11,6 +11,8 @@ import type { PluginConnection } from './connection';
 
 const RequestTimeoutMs = 1500;
 const RecoverableErrorCodes = new Set(['ECONNREFUSED', 'ECONNRESET', 'EPIPE', 'ERR_NETWORK']);
+const CanceledErrorCode = 'ERR_CANCELED';
+const TimeoutErrorCode = 'ECONNABORTED';
 
 interface GetTypeOptions {
   cancellationToken?: vscode.CancellationToken;
@@ -109,12 +111,12 @@ function shouldRecover(error: unknown) {
 }
 
 function isCanceledError(error: unknown, signal: AbortSignal) {
-  return signal.aborted || (axios.isAxiosError(error) && error.code === 'ERR_CANCELED');
+  return signal.aborted || (axios.isAxiosError(error) && error.code === CanceledErrorCode);
 }
 
 function getAxiosErrorMessage(error: unknown) {
   if (axios.isAxiosError(error)) {
-    if (error.code === 'ECONNABORTED') {
+    if (error.code === TimeoutErrorCode) {
       return `Request timed out after ${RequestTimeoutMs}ms`;
     }
 

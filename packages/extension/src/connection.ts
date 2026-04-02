@@ -39,7 +39,7 @@ export async function createPluginConnection(
   const extension = vscode.extensions.getExtension(typeScriptExtensionId);
   if (!extension) {
     outputChannel.appendLine(
-      `[connection] TypeScript extension (${typeScriptExtensionId}) not found`,
+      `[ts-viewer:connection] TypeScript extension (${typeScriptExtensionId}) not found`,
     );
     void vscode.window.showWarningMessage(
       '[TS Viewer] TypeScript language features extension is not available. TS Viewer requires it to function.',
@@ -51,14 +51,16 @@ export async function createPluginConnection(
     await extension.activate();
   } catch (error) {
     outputChannel.appendLine(
-      `[connection] TypeScript extension activation failed: ${String(error)}`,
+      `[ts-viewer:connection] TypeScript extension activation failed: ${String(error)}`,
     );
     return;
   }
 
   const extApi = extension.exports as Api | undefined;
   if (!extApi?.getAPI) {
-    outputChannel.appendLine('[connection] TypeScript extension API is not available (no getAPI)');
+    outputChannel.appendLine(
+      '[ts-viewer:connection] TypeScript extension API is not available (no getAPI)',
+    );
     void vscode.window.showWarningMessage(
       '[TS Viewer] Unable to access TypeScript extension API. Please try reloading the window.',
     );
@@ -67,7 +69,9 @@ export async function createPluginConnection(
 
   const api = extApi.getAPI(0);
   if (!api) {
-    outputChannel.appendLine('[connection] TypeScript extension API v0 returned undefined');
+    outputChannel.appendLine(
+      '[ts-viewer:connection] TypeScript extension API v0 returned undefined',
+    );
     void vscode.window.showWarningMessage(
       '[TS Viewer] TypeScript extension API version is incompatible. Please update VS Code.',
     );
@@ -185,13 +189,15 @@ class PluginConnectionManager implements PluginConnection {
       port,
     };
 
-    this.outputChannel.appendLine(`[connection] configure ${pluginId} on port ${port} (${reason})`);
+    this.outputChannel.appendLine(
+      `[ts-viewer:connection] configure ${pluginId} on port ${port} (${reason})`,
+    );
     this.api.configurePlugin(pluginId, config);
 
     const healthy = await waitForHealthy(port, HealthRetryCount, this.outputChannel);
     if (!healthy) {
       this.outputChannel.appendLine(
-        `[connection] health check failed on port ${port} after ${HealthRetryCount} attempts`,
+        `[ts-viewer:connection] health check failed on port ${port} after ${HealthRetryCount} attempts`,
       );
       if (this.currentPort === port) {
         this.currentPort = undefined;
@@ -199,7 +205,7 @@ class PluginConnectionManager implements PluginConnection {
       return undefined;
     }
 
-    this.outputChannel.appendLine(`[connection] connected on port ${port}`);
+    this.outputChannel.appendLine(`[ts-viewer:connection] connected on port ${port}`);
     this.currentPort = port;
     this.lastHealthyPort = port;
     this.lastHealthCheckAt = Date.now();
@@ -219,7 +225,9 @@ class PluginConnectionManager implements PluginConnection {
       return true;
     }
 
-    this.outputChannel.appendLine(`[connection] existing port ${port} is unhealthy (${reason})`);
+    this.outputChannel.appendLine(
+      `[ts-viewer:connection] existing port ${port} is unhealthy (${reason})`,
+    );
     if (this.currentPort === port) {
       this.currentPort = undefined;
     }
@@ -281,14 +289,16 @@ async function waitForHealthy(
 
       if (retryCount > 1) {
         outputChannel.appendLine(
-          `[health] port ${port} attempt ${attempt + 1}/${retryCount}: unexpected response`,
+          `[ts-viewer:health] port ${port} attempt ${
+            attempt + 1
+          }/${retryCount}: unexpected response`,
         );
       }
     } catch (error) {
       if (retryCount > 1) {
         const code = axios.isAxiosError(error) ? error.code ?? 'UNKNOWN' : 'UNKNOWN';
         outputChannel.appendLine(
-          `[health] port ${port} attempt ${attempt + 1}/${retryCount}: ${code}`,
+          `[ts-viewer:health] port ${port} attempt ${attempt + 1}/${retryCount}: ${code}`,
         );
       }
     }

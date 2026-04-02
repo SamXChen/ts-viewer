@@ -10,20 +10,20 @@ const factory: server.PluginModuleFactory = () => {
       const logger = info.project.projectService.logger;
 
       if (info.project.projectService.serverMode !== LanguageServiceMode.Semantic) {
-        logger.info('[TS-Viewer] skipping non-semantic server mode');
+        logger.info('[ts-viewer] skipping non-semantic server mode');
         return info.languageService;
       }
 
       try {
-        logger.info('[TS-Viewer] plugin loaded');
+        logger.info('[ts-viewer] plugin loaded');
 
         setCreatedInfo(info);
 
         if (typeof info.config.port === 'number') {
-          void startListen(info.config.port);
+          startListen(info.config.port);
         }
       } catch (error) {
-        logger.info(`[TS-Viewer] plugin create failed: ${String(error)}`);
+        logger.info(`[ts-viewer] plugin create failed: ${String(error)}`);
         return info.languageService;
       }
 
@@ -34,10 +34,11 @@ const factory: server.PluginModuleFactory = () => {
     onConfigurationChanged(config: Partial<PluginConfig>) {
       try {
         if (typeof config.port === 'number') {
-          void restartListen(config.port);
+          restartListen(config.port);
         }
       } catch (error) {
-        console.error('[TS-Viewer] onConfigurationChanged failed:', error);
+        // console.error used here because tsServer logger is not accessible in onConfigurationChanged
+        console.error('[ts-viewer] onConfigurationChanged failed:', error);
       }
     },
   };

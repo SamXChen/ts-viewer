@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { ExpiringCache } from '@ts-viewer/shared';
 import { getType } from './api';
-import { selectors } from './constants';
+import { selectors, vueSelector } from './constants';
 import type { PluginConnection } from './connection';
 import { createTypeInfoPayload, toViewRequest, type TypeInfoPayload } from './type-info';
 import { isVueTypeScriptDocument } from './vue';
@@ -12,6 +12,8 @@ import { getExpandTypeScriptService } from './helper';
 const ViewAtCursorCommandName = 'ts-viewer.view-at-cursor';
 const HoverCacheTtlMs = 1000;
 const MaxHoverCacheSize = 64;
+const DefaultSymbolName = 'TypeInfo';
+const SupportedUriSchemes = ['file', 'untitled'];
 
 let outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel('TS Viewer');
 
@@ -101,7 +103,7 @@ async function viewAtCursorImpl(connection: PluginConnection) {
     return;
   }
 
-  if (editor.document.languageId === 'vue' && !isVueTypeScriptDocument(editor.document)) {
+  if (editor.document.languageId === vueSelector && !isVueTypeScriptDocument(editor.document)) {
     vscode.window.showInformationMessage(
       '[TS Viewer] Only Vue files with <script lang="ts"> or <script lang="tsx"> are supported.',
     );
@@ -140,7 +142,7 @@ async function resolveTypeInfo(
   }
 
   if (res.type === 'error') {
-    outputChannel.appendLine(`[type-info] ${res.data}`);
+    outputChannel.appendLine(`[ts-viewer:type-info] ${res.data}`);
     return null;
   }
 
@@ -158,11 +160,11 @@ function getCacheKey(document: vscode.TextDocument, position: vscode.Position) {
 }
 
 function shouldSkipHoverDocument(document: vscode.TextDocument) {
-  if (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled') {
+  if (!SupportedUriSchemes.includes(document.uri.scheme)) {
     return true;
   }
 
-  if (document.languageId === 'vue') {
+  if (document.languageId === vueSelector) {
     return !isVueTypeScriptDocument(document);
   }
 
@@ -171,6 +173,6 @@ function shouldSkipHoverDocument(document: vscode.TextDocument) {
 
 function getSymbolName(document: vscode.TextDocument, range: vscode.Range | undefined) {
   const currentWord = range ? document.getText(range).trim() : '';
-  const fallbackWord = currentWord || 'TypeInfo';
+  const fallbackWord = currentWord || DefaultSymbolName;
   return fallbackWord.replace(/^\w/, (char) => char.toUpperCase());
 }

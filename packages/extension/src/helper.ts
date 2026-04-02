@@ -11,7 +11,7 @@ export function getExpandTypeScriptService() {
 
 function copyExpandTypeScriptImpl() {
   vscode.env.clipboard.writeText(getExpandTypeScript());
-  vscode.window.showInformationMessage('[Ts-Viewer-Extension] Copied expand typescript.');
+  vscode.window.showInformationMessage('[ts-viewer] Copied expand typescript.');
 }
 
 function getExpandTypeScriptLink() {

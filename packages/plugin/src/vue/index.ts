@@ -8,6 +8,8 @@ export interface ServiceLogger {
   info(message: string): void;
 }
 
+const AnyTypeString = 'any';
+
 export function resolveVueTypeInfo(
   info: tsServer.PluginCreateInfo,
   request: GetTypeRequest,
@@ -43,7 +45,7 @@ function tryResolveFromDefinitions(
   logger: ServiceLogger,
 ): string | undefined {
   const definitions = languageService.getDefinitionAtPosition(request.fileName, request.position);
-  logger.info(`[TS-Viewer][Vue-Definitions] count=${definitions?.length ?? 0}`);
+  logger.info(`[ts-viewer:vue] definitions count=${definitions?.length ?? 0}`);
 
   if (!definitions || definitions.length === 0) {
     return undefined;
@@ -61,8 +63,8 @@ function tryResolveFromDefinitions(
     }
 
     const typeText = resolveTypeStringAtNode(checker, defNode);
-    if (typeText && typeText !== 'any') {
-      logger.info(`[TS-Viewer][Vue-Definition-Type] ${typeText.length}`);
+    if (typeText && typeText !== AnyTypeString) {
+      logger.info(`[ts-viewer:vue] definition type length: ${typeText.length}`);
       return typeText;
     }
   }
@@ -87,8 +89,8 @@ function tryResolveFromDirectLookup(
   }
 
   const typeText = resolveTypeStringAtNode(checker, node);
-  if (typeText && typeText !== 'any') {
-    logger.info(`[TS-Viewer][Vue-Direct-Type] ${typeText.length}`);
+  if (typeText && typeText !== AnyTypeString) {
+    logger.info(`[ts-viewer:vue] direct type length: ${typeText.length}`);
     return typeText;
   }
 
@@ -105,7 +107,7 @@ function tryResolveFromQuickInfo(
     return undefined;
   }
 
-  logger.info(`[TS-Viewer][Vue-QuickInfo-Fallback] kind=${quickInfo.kind ?? 'unknown'}`);
+  logger.info(`[ts-viewer:vue] quickinfo fallback, kind=${quickInfo.kind ?? 'unknown'}`);
   return extractTypeFromDisplayParts(quickInfo.displayParts);
 }
 

@@ -39,55 +39,10 @@ const typeInfoCache = new ExpiringCache<string, string>({
 export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
   const currentDir = normalizeFsPath(info.project.getCurrentDirectory());
   info.project.projectService.logger.info(
-    `[TS-Viewer][Create-Info][Current-Directory] ${currentDir}`,
+    `[ts-viewer:create-info] current directory: ${currentDir}`,
   );
   pruneCreatedInfoMap();
   createdInfoMap.set(currentDir, info);
-}
-
-const PruneIntervalMs = 5000;
-let lastPruneAt = 0;
-
-function throttledPrune() {
-  const now = Date.now();
-  if (now - lastPruneAt < PruneIntervalMs) {
-    return;
-  }
-  lastPruneAt = now;
-  pruneCreatedInfoMap();
-}
-
-function getMatchedInfo(fileName: string) {
-  throttledPrune();
-
-  const normalizedFileName = normalizeFsPath(fileName);
-  let directMatch: tsServer.PluginCreateInfo | undefined;
-  let directMatchLength = 0;
-  let pathMatch: tsServer.PluginCreateInfo | undefined;
-  let pathMatchLength = 0;
-
-  for (const [key, info] of createdInfoMap.entries()) {
-    const program = info.languageService.getProgram();
-    if (!program) {
-      continue;
-    }
-
-    if (program.getSourceFile(fileName) && key.length > directMatchLength) {
-      directMatch = info;
-      directMatchLength = key.length;
-    }
-
-    if (isPathInside(normalizedFileName, key) && key.length > pathMatchLength) {
-      pathMatch = info;
-      pathMatchLength = key.length;
-    }
-  }
-
-  const result = directMatch ?? pathMatch;
-  if (!result) {
-    throw new Error('info not found');
-  }
-  return result;
 }
 
 let serverState: { port: number; server: http.Server } | undefined;
@@ -102,6 +57,7 @@ export function restartListen(port: number) {
 }
 
 export function stopListen() {
+  // Intentional promise-chain queuing pattern to serialize stop operations
   restartPromise = restartPromise
     .catch(() => undefined)
     .then(async () => {
@@ -109,6 +65,7 @@ export function stopListen() {
       await closeServer();
     })
     .catch((error) => {
+      // console.error: tsServer logger not accessible in module-level scheduling
       console.error(error);
     });
 
@@ -122,12 +79,14 @@ export function resetServiceStateForTests() {
 }
 
 function scheduleListen(port: number) {
+  // Intentional promise-chain queuing pattern to serialize listen operations
   restartPromise = restartPromise
     .catch(() => undefined)
     .then(() => ensureListening(port))
     .catch((error) => {
       const code = (error as { code?: string })?.code ?? 'UNKNOWN';
-      console.error(`[TS-Viewer] failed to listen on port ${port} (${code}):`, error);
+      // console.error: tsServer logger not accessible in module-level scheduling
+      console.error(`[ts-viewer] failed to listen on port ${port} (${code}):`, error);
     });
 
   return restartPromise;
@@ -173,7 +132,7 @@ function createServer(port: number) {
     };
     const onListening = () => {
       nextServer.off('error', onStartError);
-      console.log(`[TS-Viewer] Listening on port ${port}`);
+      console.log(`[ts-viewer] listening on port ${port}`);
       resolve({
         port,
         server: nextServer,
@@ -187,6 +146,7 @@ function createServer(port: number) {
     nextServer.requestTimeout = ServerRequestTimeoutMs;
     nextServer.on('error', (error) => {
       if (nextServer.listening) {
+        // console.error: tsServer logger not accessible in server event handler
         console.error(error);
       }
     });
@@ -226,7 +186,7 @@ function resolveTypeString(request: GetTypeRequest): string {
   const info = getMatchedInfo(request.fileName);
   const logger = info.project.projectService.logger;
 
-  logger.info(`[TS-Viewer][File-Name] ${request.fileName}, ${request.position}`);
+  logger.info(`[ts-viewer:request] ${request.fileName}, ${request.position}`);
 
   if (request.fileName.endsWith('.vue')) {
     return resolveVueTypeInfo(info, request, logger);
@@ -237,12 +197,12 @@ function resolveTypeString(request: GetTypeRequest): string {
     throw new Error('program not found');
   }
 
-  logger.info(`[TS-Viewer][Current-Directory] ${program.getCurrentDirectory()}`);
+  logger.info(`[ts-viewer:request] current directory: ${program.getCurrentDirectory()}`);
 
   const cacheKey = getTypeCacheKey(program, request);
   const cachedTypeInfo = getCachedTypeInfo(cacheKey);
   if (cachedTypeInfo) {
-    logger.info(`[TS-Viewer][Cache-Hit] ${request.fileName}, ${request.position}`);
+    logger.info(`[ts-viewer:request] cache hit: ${request.fileName}, ${request.position}`);
     return cachedTypeInfo;
   }
 
@@ -251,13 +211,13 @@ function resolveTypeString(request: GetTypeRequest): string {
   if (!sourceFile) {
     throw new Error('sourceFile not found');
   }
-  logger.info(`[TS-Viewer][Source-File] ${sourceFile.fileName}`);
+  logger.info(`[ts-viewer:request] source file: ${sourceFile.fileName}`);
 
   const node = findNode(sourceFile, request.position);
   if (!node) {
     throw new Error('node not found');
   }
-  logger.info(`[TS-Viewer][Node-Kind] ${ts.SyntaxKind[node.kind]}`);
+  logger.info(`[ts-viewer:request] node kind: ${ts.SyntaxKind[node.kind]}`);
 
   const typeInfoString = resolveTypeStringAtNode(typeChecker, node);
   if (!typeInfoString) {
@@ -265,7 +225,7 @@ function resolveTypeString(request: GetTypeRequest): string {
   }
 
   setCachedTypeInfo(cacheKey, typeInfoString);
-  logger.info(`[TS-Viewer][Type-Info-Length] ${typeInfoString.length}`);
+  logger.info(`[ts-viewer:request] type info length: ${typeInfoString.length}`);
 
   return typeInfoString;
 }
@@ -274,11 +234,57 @@ function logError(fileName: string | undefined, err: unknown) {
   const errorMessage = getErrorMessage(err);
   try {
     const errorInfo = getMatchedInfo(fileName ?? '');
-    errorInfo.project.projectService.logger.info(`[TS-Viewer][Error] ${errorMessage}`);
+    errorInfo.project.projectService.logger.info(`[ts-viewer:error] ${errorMessage}`);
   } catch {
     // logger unavailable
   }
-  console.error('[TS-Viewer]', err);
+  // console.error: fallback when tsServer logger is not accessible
+  console.error('[ts-viewer]', err);
+}
+
+function getMatchedInfo(fileName: string) {
+  throttledPrune();
+
+  const normalizedFileName = normalizeFsPath(fileName);
+  let directMatch: tsServer.PluginCreateInfo | undefined;
+  let directMatchLength = 0;
+  let pathMatch: tsServer.PluginCreateInfo | undefined;
+  let pathMatchLength = 0;
+
+  for (const [key, info] of createdInfoMap.entries()) {
+    const program = info.languageService.getProgram();
+    if (!program) {
+      continue;
+    }
+
+    if (program.getSourceFile(fileName) && key.length > directMatchLength) {
+      directMatch = info;
+      directMatchLength = key.length;
+    }
+
+    if (isPathInside(normalizedFileName, key) && key.length > pathMatchLength) {
+      pathMatch = info;
+      pathMatchLength = key.length;
+    }
+  }
+
+  const result = directMatch ?? pathMatch;
+  if (!result) {
+    throw new Error('info not found');
+  }
+  return result;
+}
+
+const PruneIntervalMs = 5000;
+let lastPruneAt = 0;
+
+function throttledPrune() {
+  const now = Date.now();
+  if (now - lastPruneAt < PruneIntervalMs) {
+    return;
+  }
+  lastPruneAt = now;
+  pruneCreatedInfoMap();
 }
 
 function isGetTypeRequest(input: unknown): input is GetTypeRequest {
