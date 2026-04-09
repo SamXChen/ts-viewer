@@ -10,7 +10,5 @@ export function isVueTypeScriptDocument(document: vscode.TextDocument) {
   if (document.languageId !== 'vue') {
     return false;
   }
-
-  const text = document.getText();
-  return vueTypeScriptScriptPattern.test(text);
+  return vueTypeScriptScriptPattern.test(document.getText());
 }

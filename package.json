@@ -6,19 +6,15 @@
   "license": "MIT",
   "scripts": {
     "build": "turbo run build",
-    "validate:fixtures": "pnpm --filter @ts-viewer/shared build && pnpm validate:fixtures:static && pnpm test:fixtures",
-    "validate:fixtures:static": "tsx ./tests/scripts/validate-smoke-fixtures.ts",
-    "test:fixtures": "pnpm test:fixtures:usage && pnpm test:fixtures:interaction && pnpm test:fixtures:stability",
-    "test:fixtures:usage": "tsx ./tests/scripts/run-fixture-usage-smoke.ts",
-    "test:fixtures:interaction": "tsx ./tests/scripts/run-extension-interaction-smoke.ts",
-    "test:fixtures:stability": "tsx ./tests/scripts/run-service-stability-smoke.ts",
+    "validate": "tsx ./tests/validate.ts",
+    "test": "tsx ./tests/test.ts",
     "prerelease": "lerna version --no-private",
     "release": "lerna publish from-package --yes --no-private"
   },
   "devDependencies": {
     "@types/eslint": "8.4.7",
     "@types/eslint-plugin-prettier": "3.1.0",
-    "@types/node": "20.7.1",
+    "@types/node": "25.5.0",
     "@types/prettier": "2.7.1",
     "@typescript-eslint/eslint-plugin": "6.7.3",
     "@typescript-eslint/parser": "6.7.3",
@@ -31,6 +27,6 @@
     "prettier": "2.7.1",
     "turbo": "1.10.14",
     "tsx": "4.19.2",
-    "typescript": "5.2.2"
+    "typescript": "6.0.2"
   }
 }

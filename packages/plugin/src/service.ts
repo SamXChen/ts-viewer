@@ -3,6 +3,8 @@ import {
   PluginHealthKind,
   PluginHealthRoutePath,
   PluginLoopbackHost,
+  createErrorResponse,
+  getErrorMessage,
   type GetTypeRequest,
   type GetTypeResponse,
   type PluginHealthResponse,
@@ -12,11 +14,11 @@ import * as http from 'http';
 
 import { server as tsServer } from 'typescript/lib/tsserverlibrary';
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 import { ExpiringCache } from './utils/expiring-cache';
 import { normalizeFsPath, isPathInside } from './utils/path';
 import { findNode } from './utils/syntax';
-import { TypeFormatFlags } from './utils/type-format';
+import { resolveTypeStringAtNode } from './utils/type-resolve';
 import { resolveVueTypeInfo } from './vue';
 
 const createdInfoMap = new Map<string, tsServer.PluginCreateInfo>();
@@ -37,33 +39,10 @@ const typeInfoCache = new ExpiringCache<string, string>({
 export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
   const currentDir = normalizeFsPath(info.project.getCurrentDirectory());
   info.project.projectService.logger.info(
-    `[TS-Viewer][Create-Info][Current-Directory] ${currentDir}`,
+    `[ts-viewer:create-info] current directory: ${currentDir}`,
   );
-  createdInfoMap.set(currentDir, info);
-}
-
-function getMatchedInfo(fileName: string) {
   pruneCreatedInfoMap();
-
-  const directMatch = getDirectSourceFileMatch(fileName);
-  if (directMatch) {
-    return directMatch;
-  }
-
-  const normalizedFileName = normalizeFsPath(fileName);
-  let result: tsServer.PluginCreateInfo | undefined;
-  let lastMatchedLength = 0;
-
-  for (const [key, value] of createdInfoMap.entries()) {
-    if (isPathInside(normalizedFileName, key) && key.length > lastMatchedLength) {
-      result = value;
-      lastMatchedLength = key.length;
-    }
-  }
-  if (!result) {
-    throw new Error('info not found');
-  }
-  return result;
+  createdInfoMap.set(currentDir, info);
 }
 
 let serverState: { port: number; server: http.Server } | undefined;
@@ -78,6 +57,7 @@ export function restartListen(port: number) {
 }
 
 export function stopListen() {
+  // Intentional promise-chain queuing pattern to serialize stop operations
   restartPromise = restartPromise
     .catch(() => undefined)
     .then(async () => {
@@ -85,6 +65,7 @@ export function stopListen() {
       await closeServer();
     })
     .catch((error) => {
+      // console.error: tsServer logger not accessible in module-level scheduling
       console.error(error);
     });
 
@@ -98,12 +79,14 @@ export function resetServiceStateForTests() {
 }
 
 function scheduleListen(port: number) {
+  // Intentional promise-chain queuing pattern to serialize listen operations
   restartPromise = restartPromise
     .catch(() => undefined)
     .then(() => ensureListening(port))
     .catch((error) => {
       const code = (error as { code?: string })?.code ?? 'UNKNOWN';
-      console.error(`[TS-Viewer] failed to listen on port ${port} (${code}):`, error);
+      // console.error: tsServer logger not accessible in module-level scheduling
+      console.error(`[ts-viewer] failed to listen on port ${port} (${code}):`, error);
     });
 
   return restartPromise;
@@ -114,6 +97,12 @@ async function ensureListening(port: number) {
     return;
   }
 
+  const currentPort = serverState?.port ?? 'none';
+  console.log(
+    `[ts-viewer:server] ensureListening port=${port} (current=${currentPort}, listening=${
+      serverState?.server.listening ?? false
+    })`,
+  );
   clearTypeInfoCache();
   await closeServer();
   serverState = await createServer(port);
@@ -149,7 +138,7 @@ function createServer(port: number) {
     };
     const onListening = () => {
       nextServer.off('error', onStartError);
-      console.log(`[TS-Viewer] Listening on port ${port}`);
+      console.log(`[ts-viewer] listening on port ${port}`);
       resolve({
         port,
         server: nextServer,
@@ -162,9 +151,18 @@ function createServer(port: number) {
     nextServer.headersTimeout = ServerHeadersTimeoutMs;
     nextServer.requestTimeout = ServerRequestTimeoutMs;
     nextServer.on('error', (error) => {
-      if (nextServer.listening) {
-        console.error(error);
-      }
+      const code = (error as { code?: string })?.code ?? 'UNKNOWN';
+      // console.error: tsServer logger not accessible in server event handler
+      console.error(
+        `[ts-viewer:server] runtime error on port ${port} (code=${code}, listening=${nextServer.listening}):`,
+        error,
+      );
+    });
+    nextServer.on('close', () => {
+      const isExpected = serverState?.server !== nextServer;
+      console.log(
+        `[ts-viewer:server] server closed on port ${port} (expected=${isExpected}, listening=${nextServer.listening})`,
+      );
     });
   });
 }
@@ -186,71 +184,130 @@ function createApp() {
           return;
         }
 
-        const request = req.body;
-        const info = getMatchedInfo(request.fileName);
-
-        const logger = info.project.projectService.logger;
-
-        logger.info(`[TS-Viewer][File-Name] ${request.fileName}, ${request.position}`);
-
-        const isVueFile = request.fileName.endsWith('.vue');
-
-        if (isVueFile) {
-          const typeInfoString = resolveVueTypeInfo(info, request, logger);
-          res.status(HttpStatusOk).json(createSuccessResponse(typeInfoString));
-          return;
-        }
-
-        const program = info.languageService.getProgram();
-        if (!program) {
-          throw new Error('program not found');
-        }
-
-        const currentDirectory = program.getCurrentDirectory();
-        logger.info(`[TS-Viewer][Current-Directory] ${currentDirectory}`);
-
-        const cacheKey = getTypeCacheKey(program, request);
-        const cachedTypeInfo = getCachedTypeInfo(cacheKey);
-        if (cachedTypeInfo) {
-          logger.info(`[TS-Viewer][Cache-Hit] ${request.fileName}, ${request.position}`);
-          res.status(HttpStatusOk).json(createSuccessResponse(cachedTypeInfo));
-          return;
-        }
-
-        const typeChecker = program.getTypeChecker();
-        const sourceFile = program.getSourceFile(request.fileName);
-
-        if (!sourceFile) {
-          throw new Error('sourceFile not found');
-        }
-        logger.info(`[TS-Viewer][Source-File] ${sourceFile.fileName}`);
-
-        const node = findNode(sourceFile, request.position);
-        if (!node) {
-          throw new Error('node not found');
-        }
-        logger.info(`[TS-Viewer][Node-Kind] ${ts.SyntaxKind[node.kind]}`);
-
-        const type = typeChecker.getTypeAtLocation(node);
-        logger.info(`[TS-Viewer][Type] ${type?.flags}`);
-
-        const typeInfoString = typeChecker.typeToString(type, undefined, TypeFormatFlags);
-        if (!typeInfoString) {
-          throw new Error('type info not found');
-        }
-
-        setCachedTypeInfo(cacheKey, typeInfoString);
-        logger.info(`[TS-Viewer][Type-Info-Length] ${typeInfoString.length}`);
-
+        const typeInfoString = resolveTypeString(req.body);
         res.status(HttpStatusOk).json(createSuccessResponse(typeInfoString));
       } catch (err) {
-        console.error(err);
+        logError(req.body?.fileName, err);
         res.status(HttpStatusOk).json(createErrorResponse(err));
       }
     },
   );
 
   return app;
+}
+
+function resolveTypeString(request: GetTypeRequest): string {
+  const info = getMatchedInfo(request.fileName);
+  const logger = info.project.projectService.logger;
+
+  logger.info(`[ts-viewer:request] ${request.fileName}, ${request.position}`);
+
+  if (request.fileName.endsWith('.vue')) {
+    return resolveVueTypeInfo(info, request, logger);
+  }
+
+  const program = info.languageService.getProgram();
+  if (!program) {
+    throw new Error('program not found');
+  }
+
+  logger.info(`[ts-viewer:request] current directory: ${program.getCurrentDirectory()}`);
+
+  const cacheKey = getTypeCacheKey(program, request);
+  const cachedTypeInfo = getCachedTypeInfo(cacheKey);
+  if (cachedTypeInfo) {
+    logger.info(`[ts-viewer:request] cache hit: ${request.fileName}, ${request.position}`);
+    return cachedTypeInfo;
+  }
+
+  const typeChecker = program.getTypeChecker();
+  const sourceFile = program.getSourceFile(request.fileName);
+  if (!sourceFile) {
+    throw new Error('sourceFile not found');
+  }
+  logger.info(`[ts-viewer:request] source file: ${sourceFile.fileName}`);
+
+  const node = findNode(sourceFile, request.position);
+  if (!node) {
+    throw new Error('node not found');
+  }
+  logger.info(`[ts-viewer:request] node kind: ${ts.SyntaxKind[node.kind]}`);
+
+  const typeInfoString = resolveTypeStringAtNode(typeChecker, node);
+  if (!typeInfoString) {
+    throw new Error('type info not found');
+  }
+
+  setCachedTypeInfo(cacheKey, typeInfoString);
+  logger.info(`[ts-viewer:request] type info length: ${typeInfoString.length}`);
+
+  return typeInfoString;
+}
+
+function logError(fileName: string | undefined, err: unknown) {
+  const errorMessage = getErrorMessage(err);
+  try {
+    const errorInfo = getMatchedInfo(fileName ?? '');
+    errorInfo.project.projectService.logger.info(`[ts-viewer:error] ${errorMessage}`);
+  } catch {
+    // logger unavailable
+  }
+  // console.error: fallback when tsServer logger is not accessible
+  console.error('[ts-viewer]', err);
+}
+
+function getMatchedInfo(fileName: string) {
+  throttledPrune();
+
+  const normalizedFileName = normalizeFsPath(fileName);
+  let directMatch: tsServer.PluginCreateInfo | undefined;
+  let directMatchLength = 0;
+  let pathMatch: tsServer.PluginCreateInfo | undefined;
+  let pathMatchLength = 0;
+
+  for (const [key, info] of createdInfoMap.entries()) {
+    const program = info.languageService.getProgram();
+    if (!program) {
+      continue;
+    }
+
+    if (program.getSourceFile(fileName) && key.length > directMatchLength) {
+      directMatch = info;
+      directMatchLength = key.length;
+    }
+
+    if (isPathInside(normalizedFileName, key) && key.length > pathMatchLength) {
+      pathMatch = info;
+      pathMatchLength = key.length;
+    }
+  }
+
+  const result = directMatch ?? pathMatch;
+  if (!result) {
+    const keys = [...createdInfoMap.keys()];
+    const programStates = keys.map((key) => {
+      const info = createdInfoMap.get(key);
+      return `${key}(program=${!!info?.languageService.getProgram()})`;
+    });
+    throw new Error(
+      `info not found for "${fileName}" (entries=${createdInfoMap.size}: [${programStates.join(
+        ', ',
+      )}])`,
+    );
+  }
+  return result;
+}
+
+const PruneIntervalMs = 5000;
+let lastPruneAt = 0;
+
+function throttledPrune() {
+  const now = Date.now();
+  if (now - lastPruneAt < PruneIntervalMs) {
+    return;
+  }
+  lastPruneAt = now;
+  pruneCreatedInfoMap();
 }
 
 function isGetTypeRequest(input: unknown): input is GetTypeRequest {
@@ -278,20 +335,11 @@ function createHealthResponse(): PluginHealthResponse {
   };
 }
 
-function createErrorResponse(error: unknown): GetTypeResponse {
-  return {
-    type: 'error',
-    data: error instanceof Error ? error.message : String(error),
-  };
-}
-
 function getTypeCacheKey(program: ts.Program, request: GetTypeRequest) {
   const sourceFile = program.getSourceFile(request.fileName);
   const sourceFileVersion =
     (sourceFile as { version?: string } | undefined)?.version ??
-    (sourceFile
-      ? String(sourceFile.text.length)
-      : String(ts.sys.readFile(request.fileName)?.length ?? 0));
+    (sourceFile ? String(sourceFile.text.length) : '0');
   return `${request.fileName}:${request.position}:${sourceFileVersion}`;
 }
 
@@ -308,29 +356,20 @@ function clearTypeInfoCache() {
 }
 
 function pruneCreatedInfoMap() {
+  const sizeBefore = createdInfoMap.size;
+  const removedKeys: string[] = [];
   for (const [key, info] of createdInfoMap.entries()) {
     const program = info.languageService.getProgram();
     if (!program) {
+      removedKeys.push(key);
       createdInfoMap.delete(key);
     }
   }
-}
-
-function getDirectSourceFileMatch(fileName: string) {
-  let result: tsServer.PluginCreateInfo | undefined;
-  let lastMatchedLength = 0;
-
-  for (const [key, info] of createdInfoMap.entries()) {
-    const program = info.languageService.getProgram();
-    if (!program?.getSourceFile(fileName)) {
-      continue;
-    }
-
-    if (key.length > lastMatchedLength) {
-      result = info;
-      lastMatchedLength = key.length;
-    }
+  if (removedKeys.length > 0) {
+    console.log(
+      `[ts-viewer:prune] removed ${removedKeys.length}/${sizeBefore} entries (remaining=${
+        createdInfoMap.size
+      }): ${removedKeys.join(', ')}`,
+    );
   }
-
-  return result;
 }

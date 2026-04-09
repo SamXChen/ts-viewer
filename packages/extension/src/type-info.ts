@@ -55,23 +55,13 @@ function formatTypeString(typeString: string) {
   }
 }
 
+const ValidTypeStringPrefixes = ['type', 'interface', 'enum', 'declare', 'export'];
+
 export function ensureTypeStringValid(input: string, currentWord: string): string {
   if (!input) {
     return '';
   }
-  if (input.startsWith('type')) {
-    return input;
-  }
-  if (input.startsWith('interface')) {
-    return input;
-  }
-  if (input.startsWith('enum')) {
-    return input;
-  }
-  if (input.startsWith('declare')) {
-    return input;
-  }
-  if (input.startsWith('export')) {
+  if (ValidTypeStringPrefixes.some((prefix) => input.startsWith(prefix))) {
     return input;
   }
   return `type ${currentWord} = ${input}`;

@@ -1,5 +1,5 @@
 import * as path from 'path';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 export function isPathInside(fileName: string, directory: string) {
   const relativePath = path.relative(directory, fileName);

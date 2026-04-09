@@ -27,7 +27,8 @@ TS Viewer supports `.vue` single-file components through the **Vue Official** VS
 
 - Minimal smoke fixtures now live under `tests/fixtures` for TypeScript, JavaScript, and TSX workspaces.
 - Smoke runners now live under `tests/scripts` and execute through `tsx`, so the fixture pipeline stays in TypeScript end to end.
-- Run `pnpm validate:fixtures` to verify the fixture set still matches the extension activation and connection-layer expectations.
-- The fixture pipeline now includes compiler-driven usage smoke tests, so `pnpm validate:fixtures` checks real type resolution for the TS, JS, and TSX scenarios.
+- Run `pnpm validate` to verify the fixture set still matches the extension activation and connection-layer expectations.
+- The fixture pipeline now includes compiler-driven usage smoke tests, so `pnpm validate` checks real type resolution for the TS, JS, and TSX scenarios.
+- Run `pnpm test` to execute usage, interaction, and stability smoke tests.
 - The fixture pipeline also checks hover-preview shaping and full-view request payloads for the current interaction model.
 - Service stability smoke now verifies restart and recovery behavior for TypeScript requests against the plugin HTTP layer.

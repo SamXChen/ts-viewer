@@ -18,11 +18,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const connection = await createPluginConnection(DefaultPort, outputChannel);
   if (!connection) {
-    outputChannel.appendLine('[activate] extension stopped: plugin connection unavailable');
+    outputChannel.appendLine(
+      '[ts-viewer:activate] extension stopped: plugin connection unavailable',
+    );
     return;
   }
 
-  outputChannel.appendLine('[activate] plugin connection established');
+  outputChannel.appendLine('[ts-viewer:activate] plugin connection established');
 
   context.subscriptions.push(connection);
 
@@ -30,53 +32,46 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerHoverProvider(hoverSelectors, new HoverProvider(connection)),
   );
 
-  const [ViewCommandName, ViewCommandImpl] = getViewService().command;
-  context.subscriptions.push(vscode.commands.registerCommand(ViewCommandName, ViewCommandImpl));
+  const viewService = getViewService();
+  const commands: readonly (readonly [string, (...args: never[]) => unknown])[] = [
+    viewService.command,
+    getViewAtCursorService(connection).command,
+    getExpandTypeScriptService().command,
+  ];
 
-  const [ViewAtCursorCommandName, ViewAtCursorCommandImpl] =
-    getViewAtCursorService(connection).command;
-  context.subscriptions.push(
-    vscode.commands.registerCommand(ViewAtCursorCommandName, ViewAtCursorCommandImpl),
-  );
+  for (const [name, impl] of commands) {
+    context.subscriptions.push(vscode.commands.registerCommand(name, impl));
+  }
 
-  const [DocumentProviderName, DocumentProviderImpl] = getViewService().documentProvider;
+  const [documentProviderName, documentProviderImpl] = viewService.documentProvider;
   context.subscriptions.push(
-    vscode.workspace.registerTextDocumentContentProvider(DocumentProviderName, {
-      provideTextDocumentContent: DocumentProviderImpl,
+    vscode.workspace.registerTextDocumentContentProvider(documentProviderName, {
+      provideTextDocumentContent: documentProviderImpl,
     }),
   );
 
-  const [CopyExpandTypeScriptCommandName, CopyExpandTypeScriptCommandImpl] =
-    getExpandTypeScriptService().command;
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      CopyExpandTypeScriptCommandName,
-      CopyExpandTypeScriptCommandImpl,
-    ),
-  );
-
-  outputChannel.appendLine('[activate] extension activated successfully');
+  outputChannel.appendLine('[ts-viewer:activate] extension activated successfully');
 }
 
 function logEnvironmentInfo(context: vscode.ExtensionContext) {
   const extensionVersion = context.extension.packageJSON?.version ?? 'unknown';
-  outputChannel.appendLine(`[env] TS Viewer v${extensionVersion}`);
-  outputChannel.appendLine(`[env] VS Code v${vscode.version}`);
+  outputChannel.appendLine(`[ts-viewer:env] TS Viewer v${extensionVersion}`);
+  outputChannel.appendLine(`[ts-viewer:env] VS Code v${vscode.version}`);
 
   const tsExtension = vscode.extensions.getExtension('vscode.typescript-language-features');
   outputChannel.appendLine(
-    `[env] TypeScript extension: ${
+    `[ts-viewer:env] TypeScript extension: ${
       tsExtension ? `v${tsExtension.packageJSON?.version ?? 'unknown'}` : 'NOT FOUND'
     }`,
   );
 
   const vueExtension = vscode.extensions.getExtension('Vue.volar');
   outputChannel.appendLine(
-    `[env] Vue Official extension: ${
+    `[ts-viewer:env] Vue Official extension: ${
       vueExtension ? `v${vueExtension.packageJSON?.version ?? 'unknown'}` : 'not installed'
     }`,
   );
 
   const folders = vscode.workspace.workspaceFolders;
-  outputChannel.appendLine(`[env] workspace folders: ${folders?.length ?? 0}`);
+  outputChannel.appendLine(`[ts-viewer:env] workspace folders: ${folders?.length ?? 0}`);
 }

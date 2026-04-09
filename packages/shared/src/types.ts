@@ -26,3 +26,17 @@ export interface GetTypeErrorResponse {
 }
 
 export type GetTypeResponse = GetTypeSuccessResponse | GetTypeErrorResponse;
+
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+export function createErrorResponse(error: unknown): GetTypeErrorResponse {
+  return {
+    type: 'error',
+    data: getErrorMessage(error),
+  };
+}

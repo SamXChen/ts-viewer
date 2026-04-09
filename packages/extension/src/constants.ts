@@ -1,4 +1,5 @@
 import type * as vscode from 'vscode';
+export { vueSelector } from './vue';
 import { vueSelector, vueHoverSelectors } from './vue';
 
 export const selectors = [

@@ -8,7 +8,7 @@ export function findNode(node: ts.Node, position: number): ts.Node | undefined {
   let childMatch: ts.Node | undefined;
   node.forEachChild((child) => {
     if (childMatch) {
-      return;
+      return true;
     }
 
     if (child.pos > position || child.end < position) {
@@ -16,6 +16,7 @@ export function findNode(node: ts.Node, position: number): ts.Node | undefined {
     }
 
     childMatch = findNode(child, position) ?? child;
+    return childMatch ? true : undefined;
   });
 
   return childMatch ?? node;

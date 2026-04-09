@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 
+import { ExpiringCache } from '@ts-viewer/shared';
 import { getType } from './api';
-import { selectors } from './constants';
+import { selectors, vueSelector } from './constants';
 import type { PluginConnection } from './connection';
 import { createTypeInfoPayload, toViewRequest, type TypeInfoPayload } from './type-info';
 import { isVueTypeScriptDocument } from './vue';
@@ -11,6 +12,8 @@ import { getExpandTypeScriptService } from './helper';
 const ViewAtCursorCommandName = 'ts-viewer.view-at-cursor';
 const HoverCacheTtlMs = 1000;
 const MaxHoverCacheSize = 64;
+const DefaultSymbolName = 'TypeInfo';
+const SupportedUriSchemes = ['file', 'untitled'];
 
 let outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel('TS Viewer');
 
@@ -23,7 +26,10 @@ export function getSharedOutputChannel() {
 }
 
 export class HoverProvider implements vscode.HoverProvider {
-  private readonly cache = new Map<string, { expiresAt: number; value: TypeInfoPayload | null }>();
+  private readonly cache = new ExpiringCache<string, TypeInfoPayload | null>({
+    ttlMs: HoverCacheTtlMs,
+    maxSize: MaxHoverCacheSize,
+  });
 
   constructor(private readonly connection: PluginConnection) {}
 
@@ -42,12 +48,16 @@ export class HoverProvider implements vscode.HoverProvider {
       return;
     }
 
-    const label = new vscode.MarkdownString('TS Viewer');
-    const link = getViewService().genViewLink('View Full Type', toViewRequest(typeInfo));
+    const viewLink = getViewService().genViewLink('View Full Type', toViewRequest(typeInfo));
+    const expandLink = getExpandTypeScriptService().getExpandTypeScriptLink();
 
-    const expandTypeScriptLink = getExpandTypeScriptService().getExpandTypeScriptLink();
+    const content = new vscode.MarkdownString(
+      `<span style="font-size:0.85em">${viewLink} &nbsp;|&nbsp; ${expandLink}</span>`,
+    );
+    content.supportHtml = true;
+    content.isTrusted = true;
 
-    return new vscode.Hover([label, link, expandTypeScriptLink], range);
+    return new vscode.Hover([content], range);
   }
 
   private async resolveTypeInfo(
@@ -57,15 +67,10 @@ export class HoverProvider implements vscode.HoverProvider {
     cancellationToken?: vscode.CancellationToken,
   ) {
     const cacheKey = getCacheKey(document, position);
-    const now = Date.now();
 
     const cached = this.cache.get(cacheKey);
-    if (cached && cached.expiresAt > now) {
-      return cached.value;
-    }
-
-    if (cached) {
-      this.cache.delete(cacheKey);
+    if (cached !== undefined) {
+      return cached;
     }
 
     const value = await resolveTypeInfo(
@@ -79,18 +84,7 @@ export class HoverProvider implements vscode.HoverProvider {
       return null;
     }
 
-    this.cache.set(cacheKey, {
-      expiresAt: now + HoverCacheTtlMs,
-      value,
-    });
-
-    while (this.cache.size > MaxHoverCacheSize) {
-      const firstKey = this.cache.keys().next().value;
-      if (!firstKey) {
-        break;
-      }
-      this.cache.delete(firstKey);
-    }
+    this.cache.set(cacheKey, value);
 
     return value;
   }
@@ -113,7 +107,7 @@ async function viewAtCursorImpl(connection: PluginConnection) {
     return;
   }
 
-  if (editor.document.languageId === 'vue' && !isVueTypeScriptDocument(editor.document)) {
+  if (editor.document.languageId === vueSelector && !isVueTypeScriptDocument(editor.document)) {
     vscode.window.showInformationMessage(
       '[TS Viewer] Only Vue files with <script lang="ts"> or <script lang="tsx"> are supported.',
     );
@@ -152,7 +146,7 @@ async function resolveTypeInfo(
   }
 
   if (res.type === 'error') {
-    outputChannel.appendLine(`[type-info] ${res.data}`);
+    outputChannel.appendLine(`[ts-viewer:type-info] ${res.data}`);
     return null;
   }
 
@@ -170,11 +164,11 @@ function getCacheKey(document: vscode.TextDocument, position: vscode.Position) {
 }
 
 function shouldSkipHoverDocument(document: vscode.TextDocument) {
-  if (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled') {
+  if (!SupportedUriSchemes.includes(document.uri.scheme)) {
     return true;
   }
 
-  if (document.languageId === 'vue') {
+  if (document.languageId === vueSelector) {
     return !isVueTypeScriptDocument(document);
   }
 
@@ -183,6 +177,6 @@ function shouldSkipHoverDocument(document: vscode.TextDocument) {
 
 function getSymbolName(document: vscode.TextDocument, range: vscode.Range | undefined) {
   const currentWord = range ? document.getText(range).trim() : '';
-  const fallbackWord = currentWord || 'TypeInfo';
+  const fallbackWord = currentWord || DefaultSymbolName;
   return fallbackWord.replace(/^\w/, (char) => char.toUpperCase());
 }
