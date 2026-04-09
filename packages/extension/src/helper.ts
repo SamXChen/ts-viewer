@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import { env, window } from 'vscode';
 
 const CopyExpandTypeScriptCommandName = 'ts-viewer.copy-expand-typescript';
 
@@ -10,16 +10,12 @@ export function getExpandTypeScriptService() {
 }
 
 function copyExpandTypeScriptImpl() {
-  vscode.env.clipboard.writeText(getExpandTypeScript());
-  vscode.window.showInformationMessage('[ts-viewer] Copied expand typescript.');
+  env.clipboard.writeText(getExpandTypeScript());
+  window.showInformationMessage('[ts-viewer] Copied expand typescript.');
 }
 
 function getExpandTypeScriptLink() {
-  const link = new vscode.MarkdownString(
-    `[Get Expand Helper](command:${CopyExpandTypeScriptCommandName})`,
-  );
-  link.isTrusted = true;
-  return link;
+  return `[Get Expand Helper](command:${CopyExpandTypeScriptCommandName})`;
 }
 
 function getExpandTypeScript() {

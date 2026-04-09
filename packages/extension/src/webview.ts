@@ -41,9 +41,7 @@ function genViewLink(linkName: string, requestParams: ViewRequestParams) {
   const args = [index];
   const encodedArgs = encodeURIComponent(JSON.stringify(args));
   const commandUrl = `command:${ViewCommandName}?${encodedArgs}`;
-  const link = new vscode.MarkdownString(`[${linkName}](${commandUrl})`);
-  link.isTrusted = true;
-  return link;
+  return `[${linkName}](${commandUrl})`;
 }
 
 async function viewImpl(index: string) {
