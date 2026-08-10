@@ -90,7 +90,7 @@ function findIdentifier(sourceFile: ts.SourceFile, symbolName: string) {
 }
 
 function loadTsConfig(configPath: string) {
-  const readResult = ts.readConfigFile(configPath, ts.sys.readFile);
+  const readResult = ts.readConfigFile(configPath, (fileName) => ts.sys.readFile(fileName));
   if (readResult.error) {
     throw new Error(formatDiagnostic(readResult.error));
   }

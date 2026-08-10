@@ -15,4 +15,7 @@ function run(label: string, command: string) {
 }
 
 run('build shared', 'pnpm --filter @ts-viewer/shared build');
-run('static fixture validation', `tsx ${path.join(testsRoot, 'scripts', 'validate-smoke-fixtures.ts')}`);
+run(
+  'static fixture validation',
+  `tsx ${path.join(testsRoot, 'scripts', 'validate-smoke-fixtures.ts')}`,
+);

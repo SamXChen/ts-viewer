@@ -9,12 +9,12 @@
   ],
   "scripts": {
     "build:dts": "tsc",
-    "build:bundle": "esno ./scripts/build.ts",
-    "build": "pnpm build:dts && pnpm build:bundle"
+    "build:bundle": "tsx ./scripts/build.ts",
+    "build": "pnpm build:dts && pnpm build:bundle",
+    "typecheck": "tsc"
   },
   "devDependencies": {
-    "esbuild": "0.19.4",
-    "esno": "0.17.0",
-    "typescript": "6.0.2"
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3"
   }
 }

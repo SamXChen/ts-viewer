@@ -6,7 +6,6 @@ export const pluginUtilsRoot = path.join(pluginSourceRoot, 'utils');
 export const pluginVueRoot = path.join(pluginSourceRoot, 'vue');
 export const serviceSourcePath = path.join(pluginSourceRoot, 'service.ts');
 export const pluginUtilitySourcePaths = [
-  path.join(pluginUtilsRoot, 'expiring-cache.ts'),
   path.join(pluginUtilsRoot, 'path.ts'),
   path.join(pluginUtilsRoot, 'syntax.ts'),
   path.join(pluginUtilsRoot, 'type-format.ts'),

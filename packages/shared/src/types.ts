@@ -1,28 +1,30 @@
 import { PluginHealthKind } from './constants';
 
 export interface PluginConfig {
-  port: number;
+  readonly port: number;
+  readonly instanceId?: string;
 }
 
 export interface PluginHealthResponse {
-  kind: typeof PluginHealthKind;
-  port: number;
-  projectCount: number;
+  readonly kind: typeof PluginHealthKind;
+  readonly port: number;
+  readonly projectCount: number;
+  readonly instanceId?: string;
 }
 
 export interface GetTypeRequest {
-  fileName: string;
-  position: number;
+  readonly fileName: string;
+  readonly position: number;
 }
 
 export interface GetTypeSuccessResponse {
-  type: 'success';
-  data: string;
+  readonly type: 'success';
+  readonly data: string;
 }
 
 export interface GetTypeErrorResponse {
-  type: 'error';
-  data: string;
+  readonly type: 'error';
+  readonly data: string;
 }
 
 export type GetTypeResponse = GetTypeSuccessResponse | GetTypeErrorResponse;

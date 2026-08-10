@@ -1,11 +1,11 @@
 interface ExpiringCacheOptions {
-  maxSize: number;
-  ttlMs: number;
+  readonly maxSize: number;
+  readonly ttlMs: number;
 }
 
 interface ExpiringCacheEntry<T> {
-  expiresAt: number;
-  value: T;
+  readonly expiresAt: number;
+  readonly value: T;
 }
 
 export class ExpiringCache<TKey, TValue> {

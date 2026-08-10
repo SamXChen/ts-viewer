@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 interface PackageJson {
-  version: string;
+  readonly version: string;
 }
 
 const extensionDir = path.resolve(__dirname, '..');

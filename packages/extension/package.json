@@ -17,7 +17,7 @@
     "url": "https://github.com/SamXChen/ts-viewer.git"
   },
   "engines": {
-    "vscode": "^1.82.0"
+    "vscode": "^1.125.0"
   },
   "categories": [
     "Programming Languages",
@@ -63,23 +63,23 @@
   },
   "scripts": {
     "build:dts": "tsc",
-    "build:bundle": "esno ./scripts/build.ts",
+    "build:bundle": "tsx ./scripts/build.ts",
     "build": "pnpm build:bundle && pnpm build:dts",
-    "package": "esno ./scripts/package.ts"
+    "typecheck": "tsc",
+    "package": "tsx ./scripts/package.ts"
   },
   "dependencies": {
-    "axios": "1.5.1",
-    "get-port": "6.1.2",
+    "axios": "1.19.0",
+    "get-port": "7.2.0",
     "ts-viewer-language-plugin": "workspace:^"
   },
   "devDependencies": {
     "@ts-viewer/shared": "workspace:*",
-    "@types/node": "25.5.0",
-    "@types/vscode": "1.82.0",
-    "@vscode/vsce": "2.21.1",
-    "esbuild": "0.19.4",
-    "esno": "0.17.0",
-    "prettier": "2.7.1",
-    "typescript": "6.0.2"
+    "@types/node": "24.13.3",
+    "@types/vscode": "1.125.0",
+    "@vscode/vsce": "3.9.2",
+    "esbuild": "0.28.2",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3"
   }
 }

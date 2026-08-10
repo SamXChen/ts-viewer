@@ -126,10 +126,7 @@ function validateHoverRegistration(source: string) {
 }
 
 function validateHoverGuard(source: string) {
-  for (const snippet of [
-    'shouldSkipHoverDocument',
-    'SupportedUriSchemes',
-  ]) {
+  for (const snippet of ['shouldSkipHoverDocument', 'SupportedUriSchemes']) {
     assert(source.includes(snippet), `Hover guard missing snippet: ${snippet}`);
   }
 }

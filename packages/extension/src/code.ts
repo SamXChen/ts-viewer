@@ -15,13 +15,16 @@ const MaxHoverCacheSize = 64;
 const DefaultSymbolName = 'TypeInfo';
 const SupportedUriSchemes = ['file', 'untitled'];
 
-let outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel('TS Viewer');
+let outputChannel: vscode.OutputChannel | undefined;
 
 export function setSharedOutputChannel(channel: vscode.OutputChannel) {
   outputChannel = channel;
 }
 
 export function getSharedOutputChannel() {
+  if (!outputChannel) {
+    outputChannel = vscode.window.createOutputChannel('TS Viewer');
+  }
   return outputChannel;
 }
 
@@ -146,7 +149,7 @@ async function resolveTypeInfo(
   }
 
   if (res.type === 'error') {
-    outputChannel.appendLine(`[ts-viewer:type-info] ${res.data}`);
+    getSharedOutputChannel().appendLine(`[ts-viewer:type-info] ${res.data}`);
     return null;
   }
 
@@ -156,7 +159,7 @@ async function resolveTypeInfo(
   }
 
   const symbolName = getSymbolName(document, range);
-  return createTypeInfoPayload(typeString, symbolName);
+  return await createTypeInfoPayload(typeString, symbolName);
 }
 
 function getCacheKey(document: vscode.TextDocument, position: vscode.Position) {

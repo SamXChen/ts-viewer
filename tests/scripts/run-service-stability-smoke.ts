@@ -36,7 +36,7 @@ async function main() {
   const scenarios = readJson<StabilityScenario[]>(
     path.join(fixturesRoot, 'stability-scenarios.json'),
   );
-  const serviceModule = await loadServiceModule();
+  const serviceModule = loadServiceModule();
   const fixturePrograms = createFixturePrograms();
 
   try {
@@ -55,12 +55,12 @@ async function main() {
       const firstResponse = await requestTypeInfo(firstPort, scenario);
       assert(
         firstResponse.type === 'success',
-        `Initial request failed for ${scenario.name}: ${firstResponse.data}`,
+        `Initial request failed for ${scenario.name}: ${String(firstResponse.data)}`,
       );
       for (const expectedText of scenario.expectedIncludes) {
         assert(
           String(firstResponse.data).includes(expectedText),
-          `Initial response for ${scenario.name} is missing text: ${expectedText}\nActual:\n${firstResponse.data}`,
+          `Initial response for ${scenario.name} is missing text: ${expectedText}\nActual:\n${String(firstResponse.data)}`,
         );
       }
     }
@@ -75,12 +75,12 @@ async function main() {
       const secondResponse = await requestTypeInfo(secondPort, scenario);
       assert(
         secondResponse.type === 'success',
-        `Restarted request failed for ${scenario.name}: ${secondResponse.data}`,
+        `Restarted request failed for ${scenario.name}: ${String(secondResponse.data)}`,
       );
       for (const expectedText of scenario.expectedIncludes) {
         assert(
           String(secondResponse.data).includes(expectedText),
-          `Restarted response for ${scenario.name} is missing text: ${expectedText}\nActual:\n${secondResponse.data}`,
+          `Restarted response for ${scenario.name} is missing text: ${expectedText}\nActual:\n${String(secondResponse.data)}`,
         );
       }
     }
@@ -91,7 +91,7 @@ async function main() {
   console.log(`Service stability smoke passed for ${scenarios.length} scenario(s).`);
 }
 
-async function loadServiceModule() {
+function loadServiceModule() {
   return requireTranspiledModuleGraph<ServiceModule>({
     entrySourcePath: serviceSourcePath,
     sourcePaths: [serviceSourcePath, ...pluginVueSourcePaths, ...pluginUtilitySourcePaths],
@@ -105,7 +105,7 @@ function createFixturePrograms() {
   for (const fixtureName of StabilityFixtureNames) {
     const fixtureRoot = path.join(fixturesRoot, fixtureName);
     const configPath = path.join(fixtureRoot, 'tsconfig.json');
-    const readResult = ts.readConfigFile(configPath, ts.sys.readFile);
+    const readResult = ts.readConfigFile(configPath, (fileName) => ts.sys.readFile(fileName));
     if (readResult.error) {
       throw new Error(ts.flattenDiagnosticMessageText(readResult.error.messageText, '\n'));
     }

@@ -7,6 +7,7 @@ import {
   getErrorMessage,
   type GetTypeRequest,
   type GetTypeResponse,
+  type PluginConfig,
   type PluginHealthResponse,
 } from '@ts-viewer/shared';
 import express from 'express';
@@ -15,7 +16,7 @@ import * as http from 'http';
 import { server as tsServer } from 'typescript/lib/tsserverlibrary';
 
 import ts from 'typescript';
-import { ExpiringCache } from './utils/expiring-cache';
+import { ExpiringCache } from '@ts-viewer/shared';
 import { normalizeFsPath, isPathInside } from './utils/path';
 import { findNode } from './utils/syntax';
 import { resolveTypeStringAtNode } from './utils/type-resolve';
@@ -30,6 +31,8 @@ const TypeInfoCacheMaxSize = 64;
 const ServerKeepAliveTimeoutMs = 1000;
 const ServerHeadersTimeoutMs = 2000;
 const ServerRequestTimeoutMs = 5000;
+const CloseServerTimeoutMs = 3000;
+const PortRetryRange = 20;
 
 const typeInfoCache = new ExpiringCache<string, string>({
   ttlMs: TypeInfoCacheTtlMs,
@@ -41,8 +44,15 @@ export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
   info.project.projectService.logger.info(
     `[ts-viewer:create-info] current directory: ${currentDir}`,
   );
+  setPluginConfig(info.config as Partial<PluginConfig> | undefined);
   pruneCreatedInfoMap();
   createdInfoMap.set(currentDir, info);
+}
+
+let currentPluginConfig: Partial<PluginConfig> | undefined;
+
+export function setPluginConfig(config: Partial<PluginConfig> | undefined) {
+  currentPluginConfig = config;
 }
 
 let serverState: { port: number; server: http.Server } | undefined;
@@ -116,7 +126,13 @@ async function closeServer() {
   }
 
   await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      // 超时保护：避免挂起连接阻塞 restartPromise 链
+      currentServer.closeAllConnections?.();
+      resolve();
+    }, CloseServerTimeoutMs);
     currentServer.close((error) => {
+      clearTimeout(timer);
       if (error) {
         reject(error);
         return;
@@ -127,43 +143,53 @@ async function closeServer() {
   });
 }
 
-function createServer(port: number) {
+function createServer(startPort: number) {
   const app = createApp();
 
   return new Promise<{ port: number; server: http.Server }>((resolve, reject) => {
-    const nextServer = app.listen(port, PluginLoopbackHost);
-    const onStartError = (error: Error) => {
-      nextServer.off('listening', onListening);
-      reject(error);
-    };
-    const onListening = () => {
-      nextServer.off('error', onStartError);
-      console.log(`[ts-viewer] listening on port ${port}`);
-      resolve({
-        port,
-        server: nextServer,
+    const tryListen = (attemptPort: number) => {
+      const nextServer = app.listen(attemptPort, PluginLoopbackHost);
+      const onStartError = (error: Error) => {
+        nextServer.off('listening', onListening);
+        const code = (error as { code?: string })?.code;
+        if (code === 'EADDRINUSE' && attemptPort < startPort + PortRetryRange) {
+          console.log(`[ts-viewer:server] port ${attemptPort} in use, retrying ${attemptPort + 1}`);
+          tryListen(attemptPort + 1);
+          return;
+        }
+        reject(error);
+      };
+      const onListening = () => {
+        nextServer.off('error', onStartError);
+        console.log(`[ts-viewer] listening on port ${attemptPort}`);
+        resolve({
+          port: attemptPort,
+          server: nextServer,
+        });
+      };
+
+      nextServer.once('error', onStartError);
+      nextServer.once('listening', onListening);
+      nextServer.keepAliveTimeout = ServerKeepAliveTimeoutMs;
+      nextServer.headersTimeout = ServerHeadersTimeoutMs;
+      nextServer.requestTimeout = ServerRequestTimeoutMs;
+      nextServer.on('error', (error) => {
+        const code = (error as { code?: string })?.code ?? 'UNKNOWN';
+        // console.error: tsServer logger not accessible in server event handler
+        console.error(
+          `[ts-viewer:server] runtime error on port ${attemptPort} (code=${code}, listening=${nextServer.listening}):`,
+          error,
+        );
+      });
+      nextServer.on('close', () => {
+        const isExpected = serverState?.server !== nextServer;
+        console.log(
+          `[ts-viewer:server] server closed on port ${attemptPort} (expected=${isExpected}, listening=${nextServer.listening})`,
+        );
       });
     };
 
-    nextServer.once('error', onStartError);
-    nextServer.once('listening', onListening);
-    nextServer.keepAliveTimeout = ServerKeepAliveTimeoutMs;
-    nextServer.headersTimeout = ServerHeadersTimeoutMs;
-    nextServer.requestTimeout = ServerRequestTimeoutMs;
-    nextServer.on('error', (error) => {
-      const code = (error as { code?: string })?.code ?? 'UNKNOWN';
-      // console.error: tsServer logger not accessible in server event handler
-      console.error(
-        `[ts-viewer:server] runtime error on port ${port} (code=${code}, listening=${nextServer.listening}):`,
-        error,
-      );
-    });
-    nextServer.on('close', () => {
-      const isExpected = serverState?.server !== nextServer;
-      console.log(
-        `[ts-viewer:server] server closed on port ${port} (expected=${isExpected}, listening=${nextServer.listening})`,
-      );
-    });
+    tryListen(startPort);
   });
 }
 
@@ -190,6 +216,15 @@ function createApp() {
         logError(req.body?.fileName, err);
         res.status(HttpStatusOk).json(createErrorResponse(err));
       }
+    },
+  );
+
+  // 兜底：任何 handler 抛异常都返回 200 + error JSON，避免 axios ERR_BAD_RESPONSE
+  app.use(
+    (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      void _next;
+      logError(undefined, err);
+      res.status(HttpStatusOk).json(createErrorResponse(err));
     },
   );
 
@@ -266,7 +301,13 @@ function getMatchedInfo(fileName: string) {
   let pathMatchLength = 0;
 
   for (const [key, info] of createdInfoMap.entries()) {
-    const program = info.languageService.getProgram();
+    let program: ts.Program | undefined;
+    try {
+      program = info.languageService.getProgram();
+    } catch {
+      // 失效条目：跳过，由 pruneCreatedInfoMap 后续清理
+      program = undefined;
+    }
     if (!program) {
       continue;
     }
@@ -287,7 +328,13 @@ function getMatchedInfo(fileName: string) {
     const keys = [...createdInfoMap.keys()];
     const programStates = keys.map((key) => {
       const info = createdInfoMap.get(key);
-      return `${key}(program=${!!info?.languageService.getProgram()})`;
+      let programAlive = false;
+      try {
+        programAlive = !!info?.languageService.getProgram();
+      } catch {
+        programAlive = false;
+      }
+      return `${key}(program=${programAlive})`;
     });
     throw new Error(
       `info not found for "${fileName}" (entries=${createdInfoMap.size}: [${programStates.join(
@@ -332,6 +379,7 @@ function createHealthResponse(): PluginHealthResponse {
     kind: PluginHealthKind,
     port: serverState?.port ?? 0,
     projectCount: createdInfoMap.size,
+    instanceId: currentPluginConfig?.instanceId,
   };
 }
 
@@ -359,8 +407,14 @@ function pruneCreatedInfoMap() {
   const sizeBefore = createdInfoMap.size;
   const removedKeys: string[] = [];
   for (const [key, info] of createdInfoMap.entries()) {
-    const program = info.languageService.getProgram();
-    if (!program) {
+    let programAlive = false;
+    try {
+      programAlive = !!info.languageService.getProgram();
+    } catch {
+      // languageService 已失效（tsserver 内部 program 数据损坏），视为死亡条目
+      programAlive = false;
+    }
+    if (!programAlive) {
       removedKeys.push(key);
       createdInfoMap.delete(key);
     }

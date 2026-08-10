@@ -10,16 +10,7 @@ interface RequireTranspiledModuleGraphOptions {
   tempRoot: string;
 }
 
-export async function importInlineTranspiledModule<TModule>(sourcePath: string) {
-  const transpiled = transpileSource(sourcePath, {
-    module: ts.ModuleKind.ES2020,
-    target: ts.ScriptTarget.ES2020,
-  });
-  const encodedModule = Buffer.from(transpiled, 'utf8').toString('base64');
-  return import(`data:text/javascript;base64,${encodedModule}`) as Promise<TModule>;
-}
-
-export async function requireTranspiledModuleGraph<TModule>(
+export function requireTranspiledModuleGraph<TModule>(
   options: RequireTranspiledModuleGraphOptions,
 ) {
   fs.mkdirSync(options.tempRoot, { recursive: true });

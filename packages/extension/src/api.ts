@@ -10,12 +10,18 @@ import * as vscode from 'vscode';
 import type { PluginConnection } from './connection';
 
 const RequestTimeoutMs = 1500;
-const RecoverableErrorCodes = new Set(['ECONNREFUSED', 'ECONNRESET', 'EPIPE', 'ERR_NETWORK']);
+const RecoverableErrorCodes = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EPIPE',
+  'ERR_NETWORK',
+  'ERR_BAD_RESPONSE',
+]);
 const CanceledErrorCode = 'ERR_CANCELED';
 const TimeoutErrorCode = 'ECONNABORTED';
 
 interface GetTypeOptions {
-  cancellationToken?: vscode.CancellationToken;
+  readonly cancellationToken?: vscode.CancellationToken;
 }
 
 export async function getType(
@@ -71,7 +77,7 @@ async function requestWithRecovery(
       return undefined;
     }
 
-    const errorCode = axios.isAxiosError(error) ? error.code ?? 'UNKNOWN' : 'NON_AXIOS';
+    const errorCode = axios.isAxiosError(error) ? (error.code ?? 'UNKNOWN') : 'NON_AXIOS';
     const errorMsg = getAxiosErrorMessage(error);
     const recoverable = shouldRecover(error);
     outputChannel.appendLine(
@@ -113,6 +119,7 @@ async function requestTypeInfo(request: GetTypeRequest, port: number, signal: Ab
     {
       timeout: RequestTimeoutMs,
       signal,
+      proxy: false,
     },
   );
   return result.data;

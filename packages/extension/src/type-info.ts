@@ -1,9 +1,11 @@
-import prettier from 'prettier';
+import { format as formatWithPrettier } from 'prettier/standalone';
+import * as prettierPluginEstree from 'prettier/plugins/estree';
+import * as prettierPluginTypeScript from 'prettier/plugins/typescript';
 
 export interface TypeInfoPayload {
-  preview: string;
-  text: string;
-  title: string;
+  readonly preview: string;
+  readonly text: string;
+  readonly title: string;
 }
 
 const PreviewMaxLines = 4;
@@ -13,9 +15,12 @@ const EllipsisLength = Ellipsis.length;
 const ViewLanguage = 'typescript';
 const FormatDocumentCommand = 'editor.action.formatDocument';
 
-export function createTypeInfoPayload(typeString: string, symbolName: string): TypeInfoPayload {
+export async function createTypeInfoPayload(
+  typeString: string,
+  symbolName: string,
+): Promise<TypeInfoPayload> {
   const validTypeString = ensureTypeStringValid(typeString, symbolName);
-  const formattedTypeString = formatTypeString(validTypeString);
+  const formattedTypeString = await formatTypeString(validTypeString);
 
   return {
     preview: createPreview(formattedTypeString),
@@ -24,7 +29,7 @@ export function createTypeInfoPayload(typeString: string, symbolName: string): T
   };
 }
 
-export function createPreview(typeString: string) {
+function createPreview(typeString: string) {
   const lines = typeString.trimEnd().split('\n');
   const preview = lines.slice(0, PreviewMaxLines).join('\n');
   const maybeTruncatedLines = lines.length > PreviewMaxLines ? `${preview}\n${Ellipsis}` : preview;
@@ -45,19 +50,21 @@ export function toViewRequest(typeInfo: TypeInfoPayload) {
   };
 }
 
-function formatTypeString(typeString: string) {
+async function formatTypeString(typeString: string) {
   try {
-    return prettier.format(typeString, {
+    return await formatWithPrettier(typeString, {
       parser: 'typescript',
+      plugins: [prettierPluginEstree, prettierPluginTypeScript],
     });
   } catch {
+    // 格式化失败时回退原始类型字符串（prettier 对残缺类型片段可能报错）
     return typeString;
   }
 }
 
 const ValidTypeStringPrefixes = ['type', 'interface', 'enum', 'declare', 'export'];
 
-export function ensureTypeStringValid(input: string, currentWord: string): string {
+function ensureTypeStringValid(input: string, currentWord: string): string {
   if (!input) {
     return '';
   }

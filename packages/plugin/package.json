@@ -12,17 +12,17 @@
   },
   "scripts": {
     "build:dts": "tsc",
-    "build:bundle": "esno ./scripts/build.ts",
-    "build": "pnpm build:dts && pnpm build:bundle"
+    "build:bundle": "tsx ./scripts/build.ts",
+    "build": "pnpm build:dts && pnpm build:bundle",
+    "typecheck": "tsc"
   },
   "dependencies": {
-    "express": "4.18.2"
+    "express": "5.2.1"
   },
   "devDependencies": {
     "@ts-viewer/shared": "workspace:*",
-    "@types/express": "4.17.18",
-    "esbuild": "0.19.4",
-    "esno": "0.17.0",
-    "typescript": "6.0.2"
+    "@types/express": "5.0.6",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3"
   }
 }

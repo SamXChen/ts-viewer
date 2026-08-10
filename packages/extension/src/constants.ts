@@ -1,6 +1,6 @@
 import type * as vscode from 'vscode';
-export { vueSelector } from './vue';
-import { vueSelector, vueHoverSelectors } from './vue';
+import { vueHoverSelectors, vueSelector } from './vue';
+export { vueHoverSelectors, vueSelector } from './vue';
 
 export const selectors = [
   'typescript',
