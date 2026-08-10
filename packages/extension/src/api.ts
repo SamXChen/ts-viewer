@@ -10,7 +10,13 @@ import * as vscode from 'vscode';
 import type { PluginConnection } from './connection';
 
 const RequestTimeoutMs = 1500;
-const RecoverableErrorCodes = new Set(['ECONNREFUSED', 'ECONNRESET', 'EPIPE', 'ERR_NETWORK']);
+const RecoverableErrorCodes = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EPIPE',
+  'ERR_NETWORK',
+  'ERR_BAD_RESPONSE',
+]);
 const CanceledErrorCode = 'ERR_CANCELED';
 const TimeoutErrorCode = 'ECONNABORTED';
 
@@ -113,6 +119,7 @@ async function requestTypeInfo(request: GetTypeRequest, port: number, signal: Ab
     {
       timeout: RequestTimeoutMs,
       signal,
+      proxy: false,
     },
   );
   return result.data;

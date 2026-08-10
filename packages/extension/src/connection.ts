@@ -5,6 +5,7 @@ import {
   type PluginConfig,
   type PluginHealthResponse,
 } from '@ts-viewer/shared';
+import { randomUUID } from 'node:crypto';
 import axios from 'axios';
 import getPort from 'get-port';
 import { pluginId, probeSelectors, typeScriptExtensionId } from './constants';
@@ -24,6 +25,8 @@ const HealthRetryDelayMs = 150;
 const ReuseHealthTtlMs = 5000;
 const PortCandidateRange = 20;
 const ProbeDebounceMs = 500;
+const HeartbeatIntervalMs = 60_000;
+const MaxConsecutiveRecoverFailures = 3;
 
 export interface PluginConnection extends vscode.Disposable {
   getPort(): number | undefined;
@@ -78,7 +81,7 @@ export async function createPluginConnection(
     return;
   }
 
-  const connection = new PluginConnectionManager(api, defaultPort, outputChannel);
+  const connection = new PluginConnectionManager(api, defaultPort, outputChannel, randomUUID());
   return connection;
 }
 
@@ -90,17 +93,24 @@ class PluginConnectionManager implements PluginConnection {
   private lastHealthyPort: number | undefined;
   private lastHealthCheckAt = 0;
   private probeTimer: ReturnType<typeof setTimeout> | undefined;
+  private heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+  private consecutiveRecoverFailures = 0;
+  private reloadPromptShown = false;
 
   constructor(
     private readonly api: ApiV0,
     private readonly defaultPort: number,
     private readonly outputChannel: vscode.OutputChannel,
+    private readonly instanceId: string,
   ) {
     this.subscriptions.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
         void this.ensureConnected('workspace folders changed');
       }),
     );
+    this.heartbeatTimer = setInterval(() => {
+      void this.ensureConnected('periodic heartbeat');
+    }, HeartbeatIntervalMs);
     this.subscriptions.push(
       vscode.workspace.onDidOpenTextDocument((document) => {
         this.probeForSupportedDocument(document, 'supported document opened');
@@ -126,11 +136,46 @@ class PluginConnectionManager implements PluginConnection {
   }
 
   recover(reason: string) {
-    return this.enqueueConfigure(reason, true);
+    const result = this.enqueueConfigure(reason, true);
+    void result.then((port) => {
+      if (port === undefined) {
+        this.consecutiveRecoverFailures += 1;
+        this.outputChannel.appendLine(
+          `[ts-viewer:connection] recover failed ${this.consecutiveRecoverFailures}/${MaxConsecutiveRecoverFailures}`,
+        );
+        if (
+          this.consecutiveRecoverFailures >= MaxConsecutiveRecoverFailures &&
+          !this.reloadPromptShown
+        ) {
+          this.reloadPromptShown = true;
+          this.promptReloadWindow();
+        }
+      } else {
+        this.consecutiveRecoverFailures = 0;
+      }
+    });
+    return result;
+  }
+
+  private promptReloadWindow() {
+    void vscode.window
+      .showErrorMessage(
+        '[TS Viewer] TypeScript server unavailable. Please reload the window to restore TS Viewer.',
+        'Reload Window',
+      )
+      .then((selection) => {
+        if (selection === 'Reload Window') {
+          void vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
+      });
   }
 
   dispose() {
     this.isDisposed = true;
+    if (this.heartbeatTimer !== undefined) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = undefined;
+    }
     if (this.probeTimer !== undefined) {
       clearTimeout(this.probeTimer);
       this.probeTimer = undefined;
@@ -205,6 +250,7 @@ class PluginConnectionManager implements PluginConnection {
   private async applyConfig(port: number, reason: string) {
     const config: Partial<PluginConfig> = {
       port,
+      instanceId: this.instanceId,
     };
 
     this.outputChannel.appendLine(
@@ -212,7 +258,12 @@ class PluginConnectionManager implements PluginConnection {
     );
     this.api.configurePlugin(pluginId, config);
 
-    const healthy = await waitForHealthy(port, HealthRetryCount, this.outputChannel);
+    const healthy = await waitForHealthy(
+      port,
+      HealthRetryCount,
+      this.outputChannel,
+      this.instanceId,
+    );
     if (!healthy) {
       this.outputChannel.appendLine(
         `[ts-viewer:connection] health check failed on port ${port} after ${HealthRetryCount} attempts`,
@@ -236,7 +287,7 @@ class PluginConnectionManager implements PluginConnection {
       return true;
     }
 
-    const healthy = await waitForHealthy(port, 1, this.outputChannel);
+    const healthy = await waitForHealthy(port, 1, this.outputChannel, this.instanceId);
     if (healthy) {
       this.lastHealthyPort = port;
       this.lastHealthCheckAt = now;
@@ -291,6 +342,7 @@ async function waitForHealthy(
   port: number,
   retryCount: number,
   outputChannel: vscode.OutputChannel,
+  expectedInstanceId?: string,
 ) {
   for (let attempt = 0; attempt < retryCount; attempt += 1) {
     try {
@@ -298,18 +350,21 @@ async function waitForHealthy(
         `http://${PluginLoopbackHost}:${port}${PluginHealthRoutePath}`,
         {
           timeout: HealthCheckTimeoutMs,
+          proxy: false,
+          validateStatus: () => true,
         },
       );
 
-      if (isPluginHealthResponse(response.data, port)) {
+      if (isPluginHealthResponse(response.data, port, expectedInstanceId)) {
         return true;
       }
 
       if (retryCount > 1) {
+        const bodyHint = summarizeResponseBody(response.data);
         outputChannel.appendLine(
-          `[ts-viewer:health] port ${port} attempt ${
-            attempt + 1
-          }/${retryCount}: unexpected response`,
+          `[ts-viewer:health] port ${port} attempt ${attempt + 1}/${retryCount}: http=${
+            response.status
+          } body=${bodyHint}`,
         );
       }
     } catch (error) {
@@ -329,8 +384,30 @@ async function waitForHealthy(
   return false;
 }
 
-function isPluginHealthResponse(input: PluginHealthResponse | undefined, port: number) {
+function summarizeResponseBody(data: unknown) {
+  if (typeof data === 'string') {
+    return data.replace(/\s+/g, ' ').slice(0, 120);
+  }
+  if (data === undefined || data === null) {
+    return '';
+  }
+  try {
+    return JSON.stringify(data).slice(0, 120);
+  } catch {
+    return String(data).slice(0, 120);
+  }
+}
+
+function isPluginHealthResponse(
+  input: PluginHealthResponse | undefined,
+  port: number,
+  expectedInstanceId?: string,
+) {
   if (!input) {
+    return false;
+  }
+
+  if (expectedInstanceId !== undefined && input.instanceId !== expectedInstanceId) {
     return false;
   }
 

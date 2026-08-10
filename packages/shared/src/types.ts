@@ -2,12 +2,14 @@ import { PluginHealthKind } from './constants';
 
 export interface PluginConfig {
   port: number;
+  instanceId?: string;
 }
 
 export interface PluginHealthResponse {
   kind: typeof PluginHealthKind;
   port: number;
   projectCount: number;
+  instanceId?: string;
 }
 
 export interface GetTypeRequest {

@@ -2,7 +2,7 @@ import { LanguageServiceMode, server } from 'typescript/lib/tsserverlibrary';
 
 import { PluginConfig } from '@ts-viewer/shared';
 
-import { startListen, restartListen, setCreatedInfo } from './service';
+import { restartListen, setCreatedInfo, setPluginConfig, startListen } from './service';
 
 const factory: server.PluginModuleFactory = () => {
   return {
@@ -33,6 +33,7 @@ const factory: server.PluginModuleFactory = () => {
     },
     onConfigurationChanged(config: Partial<PluginConfig>) {
       try {
+        setPluginConfig(config);
         if (typeof config.port === 'number') {
           restartListen(config.port);
         }
