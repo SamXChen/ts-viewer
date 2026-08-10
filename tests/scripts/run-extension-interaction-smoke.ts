@@ -25,7 +25,7 @@ interface TypeInfoPayload {
 }
 
 interface TypeInfoModule {
-  createTypeInfoPayload(typeString: string, symbolName: string): TypeInfoPayload;
+  createTypeInfoPayload(typeString: string, symbolName: string): Promise<TypeInfoPayload>;
   toViewRequest(payload: TypeInfoPayload): {
     commandList: string[];
     language: string;
@@ -44,7 +44,7 @@ void main();
 async function main() {
   const usageScenarios = new Map(loadUsageScenarios().map((scenario) => [scenario.name, scenario]));
   const interactionScenarios = readJson<InteractionScenario[]>(interactionScenariosPath);
-  const typeInfoModule = await requireTranspiledModuleGraph<TypeInfoModule>({
+  const typeInfoModule = requireTranspiledModuleGraph<TypeInfoModule>({
     entrySourcePath: typeInfoSourcePath,
     sourcePaths: [typeInfoSourcePath],
     sourceRoot: extensionSourceRoot,
@@ -56,7 +56,7 @@ async function main() {
     assert(usageScenario, `Missing usage scenario for interaction scenario: ${scenario.name}`);
 
     const typeText = runScenario(usageScenario);
-    const payload = typeInfoModule.createTypeInfoPayload(typeText, scenario.symbolName);
+    const payload = await typeInfoModule.createTypeInfoPayload(typeText, scenario.symbolName);
     const viewRequest = typeInfoModule.toViewRequest(payload);
 
     for (const expectedText of scenario.expectedPreviewIncludes) {

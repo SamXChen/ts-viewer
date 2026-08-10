@@ -15,5 +15,11 @@ function run(label: string, command: string) {
 }
 
 run('fixture usage', `tsx ${path.join(testsRoot, 'scripts', 'run-fixture-usage-smoke.ts')}`);
-run('extension interaction', `tsx ${path.join(testsRoot, 'scripts', 'run-extension-interaction-smoke.ts')}`);
-run('service stability', `tsx ${path.join(testsRoot, 'scripts', 'run-service-stability-smoke.ts')}`);
+run(
+  'extension interaction',
+  `tsx ${path.join(testsRoot, 'scripts', 'run-extension-interaction-smoke.ts')}`,
+);
+run(
+  'service stability',
+  `tsx ${path.join(testsRoot, 'scripts', 'run-service-stability-smoke.ts')}`,
+);

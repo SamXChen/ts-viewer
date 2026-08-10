@@ -16,7 +16,7 @@ import * as http from 'http';
 import { server as tsServer } from 'typescript/lib/tsserverlibrary';
 
 import ts from 'typescript';
-import { ExpiringCache } from './utils/expiring-cache';
+import { ExpiringCache } from '@ts-viewer/shared';
 import { normalizeFsPath, isPathInside } from './utils/path';
 import { findNode } from './utils/syntax';
 import { resolveTypeStringAtNode } from './utils/type-resolve';
@@ -47,6 +47,12 @@ export function setCreatedInfo(info: tsServer.PluginCreateInfo) {
   setPluginConfig(info.config as Partial<PluginConfig> | undefined);
   pruneCreatedInfoMap();
   createdInfoMap.set(currentDir, info);
+}
+
+let currentPluginConfig: Partial<PluginConfig> | undefined;
+
+export function setPluginConfig(config: Partial<PluginConfig> | undefined) {
+  currentPluginConfig = config;
 }
 
 let serverState: { port: number; server: http.Server } | undefined;
@@ -365,12 +371,6 @@ function createSuccessResponse(data: string): GetTypeResponse {
     type: 'success',
     data,
   };
-}
-
-let currentPluginConfig: Partial<PluginConfig> | undefined;
-
-export function setPluginConfig(config: Partial<PluginConfig> | undefined) {
-  currentPluginConfig = config;
 }
 
 function createHealthResponse(): PluginHealthResponse {

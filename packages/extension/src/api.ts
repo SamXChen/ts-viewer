@@ -21,7 +21,7 @@ const CanceledErrorCode = 'ERR_CANCELED';
 const TimeoutErrorCode = 'ECONNABORTED';
 
 interface GetTypeOptions {
-  cancellationToken?: vscode.CancellationToken;
+  readonly cancellationToken?: vscode.CancellationToken;
 }
 
 export async function getType(
@@ -77,7 +77,7 @@ async function requestWithRecovery(
       return undefined;
     }
 
-    const errorCode = axios.isAxiosError(error) ? error.code ?? 'UNKNOWN' : 'NON_AXIOS';
+    const errorCode = axios.isAxiosError(error) ? (error.code ?? 'UNKNOWN') : 'NON_AXIOS';
     const errorMsg = getAxiosErrorMessage(error);
     const recoverable = shouldRecover(error);
     outputChannel.appendLine(

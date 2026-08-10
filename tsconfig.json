@@ -10,5 +10,17 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "isolatedModules": true
-  }
+  },
+  "include": [
+    "packages/extension/src/**/*.ts",
+    "packages/extension/scripts/**/*.ts",
+    "packages/plugin/src/**/*.ts",
+    "packages/plugin/scripts/**/*.ts",
+    "packages/shared/src/**/*.ts",
+    "packages/shared/scripts/**/*.ts",
+    "tests/scripts/**/*.ts",
+    "tests/test.ts",
+    "tests/validate.ts"
+  ],
+  "exclude": ["node_modules", "**/dist", ".history", ".agent", ".tmp", ".git"]
 }

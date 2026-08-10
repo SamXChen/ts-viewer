@@ -27,6 +27,7 @@ const PortCandidateRange = 20;
 const ProbeDebounceMs = 500;
 const HeartbeatIntervalMs = 60_000;
 const MaxConsecutiveRecoverFailures = 3;
+const ResponseBodySummaryMaxLength = 120;
 
 export interface PluginConnection extends vscode.Disposable {
   getPort(): number | undefined;
@@ -138,20 +139,20 @@ class PluginConnectionManager implements PluginConnection {
   recover(reason: string) {
     const result = this.enqueueConfigure(reason, true);
     void result.then((port) => {
-      if (port === undefined) {
-        this.consecutiveRecoverFailures += 1;
-        this.outputChannel.appendLine(
-          `[ts-viewer:connection] recover failed ${this.consecutiveRecoverFailures}/${MaxConsecutiveRecoverFailures}`,
-        );
-        if (
-          this.consecutiveRecoverFailures >= MaxConsecutiveRecoverFailures &&
-          !this.reloadPromptShown
-        ) {
-          this.reloadPromptShown = true;
-          this.promptReloadWindow();
-        }
-      } else {
+      if (port !== undefined) {
         this.consecutiveRecoverFailures = 0;
+        return;
+      }
+      this.consecutiveRecoverFailures += 1;
+      this.outputChannel.appendLine(
+        `[ts-viewer:connection] recover failed ${this.consecutiveRecoverFailures}/${MaxConsecutiveRecoverFailures}`,
+      );
+      if (
+        this.consecutiveRecoverFailures >= MaxConsecutiveRecoverFailures &&
+        !this.reloadPromptShown
+      ) {
+        this.reloadPromptShown = true;
+        this.promptReloadWindow();
       }
     });
     return result;
@@ -369,7 +370,7 @@ async function waitForHealthy(
       }
     } catch (error) {
       if (retryCount > 1) {
-        const code = axios.isAxiosError(error) ? error.code ?? 'UNKNOWN' : 'UNKNOWN';
+        const code = axios.isAxiosError(error) ? (error.code ?? 'UNKNOWN') : 'UNKNOWN';
         outputChannel.appendLine(
           `[ts-viewer:health] port ${port} attempt ${attempt + 1}/${retryCount}: ${code}`,
         );
@@ -386,15 +387,16 @@ async function waitForHealthy(
 
 function summarizeResponseBody(data: unknown) {
   if (typeof data === 'string') {
-    return data.replace(/\s+/g, ' ').slice(0, 120);
+    return data.replace(/\s+/g, ' ').slice(0, ResponseBodySummaryMaxLength);
   }
   if (data === undefined || data === null) {
     return '';
   }
   try {
-    return JSON.stringify(data).slice(0, 120);
+    return JSON.stringify(data).slice(0, ResponseBodySummaryMaxLength);
   } catch {
-    return String(data).slice(0, 120);
+    // JSON.stringify 失败（如循环引用/BigInt）时回退 Object.prototype.toString 展示
+    return Object.prototype.toString.call(data).slice(0, ResponseBodySummaryMaxLength);
   }
 }
 

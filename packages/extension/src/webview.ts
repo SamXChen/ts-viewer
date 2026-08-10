@@ -7,10 +7,10 @@ const DefaultViewTitle = 'ts-viewer';
 const DefaultViewLanguage = 'typescript';
 
 export interface ViewRequestParams {
-  title?: string;
-  text: string;
-  language?: string;
-  commandList?: string[];
+  readonly title?: string;
+  readonly text: string;
+  readonly language?: string;
+  readonly commandList?: string[];
 }
 
 const MaxViewRequestMapSize = 6;

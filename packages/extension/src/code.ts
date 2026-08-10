@@ -159,7 +159,7 @@ async function resolveTypeInfo(
   }
 
   const symbolName = getSymbolName(document, range);
-  return createTypeInfoPayload(typeString, symbolName);
+  return await createTypeInfoPayload(typeString, symbolName);
 }
 
 function getCacheKey(document: vscode.TextDocument, position: vscode.Position) {

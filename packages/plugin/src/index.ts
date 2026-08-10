@@ -1,6 +1,6 @@
 import { LanguageServiceMode, server } from 'typescript/lib/tsserverlibrary';
 
-import { PluginConfig } from '@ts-viewer/shared';
+import type { PluginConfig } from '@ts-viewer/shared';
 
 import { restartListen, setCreatedInfo, setPluginConfig, startListen } from './service';
 
